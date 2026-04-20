@@ -116,16 +116,49 @@
         color: var(--error-fg);
         font-size: .9rem;
       }
-      .placeholder {
-        color: var(--muted);
-        font-size: .9rem;
+      /* Hero (empty-state landing) */
+      .hero {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
         text-align: center;
-        padding: 2.5rem 1rem;
+        gap: .5rem;
+        padding: 2rem 1rem;
+        /* Pull up a little from perfect centre; looks more settled. */
+        transform: translateY(-6%);
       }
-      .placeholder a {
+      .hero-title {
+        font-size: clamp(2.25rem, 5vw, 3rem);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin: 0;
+        color: var(--fg);
+      }
+      .hero-tagline {
+        margin: .25rem 0 0;
+        font-size: 1rem;
+        color: var(--fg);
+        opacity: .75;
+      }
+      .hero-hint {
+        margin: 1rem 0 0;
+        font-size: .85rem;
+        color: var(--muted);
+        max-width: 28rem;
+        line-height: 1.6;
+      }
+      .hero-cta {
+        margin: .35rem 0 0;
+        font-size: .82rem;
+        color: var(--muted);
+      }
+      .hero-cta a {
         color: var(--accent);
         cursor: pointer;
         text-decoration: underline;
+        text-underline-offset: 3px;
       }
 
       /* Composer */
@@ -270,23 +303,79 @@
         outline: 2px solid var(--accent);
         outline-offset: 1px;
       }
-      .field .help {
-        margin: .3rem 0 0;
-        font-size: .72rem;
-        color: var(--muted);
-        line-height: 1.45;
-      }
       .field input[type="range"] {
         width: 100%;
         accent-color: var(--accent);
       }
-      .field .inline-btn {
+
+      /* Mini button used for inline actions like "Reset" next to a label. */
+      .mini-btn {
+        background: var(--surface-2);
+        border: 1px solid var(--border-strong);
+        border-radius: 6px;
+        padding: .18rem .5rem;
+        font-size: .7rem;
+        color: var(--muted);
+        cursor: pointer;
+      }
+      .mini-btn:hover { color: var(--fg); background: var(--surface); }
+
+      /* Help tooltip: small "?" next to a label, tooltip content in data-help.
+         Hover or focus or tap (toggles .open) reveals it. */
+      .help-tip {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 15px;
+        height: 15px;
+        margin-left: .35rem;
+        border-radius: 50%;
+        border: 1px solid var(--border-strong);
         background: transparent;
-        border: 0;
-        color: var(--accent);
+        color: var(--muted);
+        font-size: .62rem;
+        line-height: 1;
         padding: 0;
-        font-size: .72rem;
-        margin-top: .25rem;
+        cursor: help;
+        vertical-align: middle;
+      }
+      .help-tip:hover,
+      .help-tip:focus-visible,
+      .help-tip.open {
+        color: var(--accent);
+        border-color: var(--accent);
+        outline: none;
+      }
+      .help-tip::after {
+        content: attr(data-help);
+        position: absolute;
+        top: calc(100% + .4rem);
+        left: 0;
+        width: max-content;
+        max-width: 260px;
+        padding: .55rem .7rem;
+        background: var(--surface-2);
+        border: 1px solid var(--border-strong);
+        border-radius: 8px;
+        color: var(--fg);
+        font-family: inherit;
+        font-size: .74rem;
+        font-weight: 400;
+        line-height: 1.5;
+        text-align: left;
+        white-space: normal;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, .45);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 120ms ease;
+        z-index: 25;
+      }
+      .help-tip:hover::after,
+      .help-tip:focus-visible::after,
+      .help-tip.open::after {
+        opacity: 1;
+        pointer-events: auto;
       }
 
       .drawer-footer button {
@@ -317,17 +406,16 @@
       <div class="drawer-body">
         <div class="field">
           <div class="field-header">
-            <label for="key">OpenAI API key</label>
+            <label for="key">OpenAI API key<button type="button" class="help-tip" data-help="Stored in your browser session only. Sent directly to api.openai.com, nowhere else." aria-label="About the API key">?</button></label>
             <a class="get-key" href="https://platform.openai.com/account/api-keys"
               target="_blank" rel="noopener">Get a key</a>
           </div>
           <input id="key" type="password" placeholder="sk-..." autocomplete="off" />
-          <p class="help">Stored in your browser session only. Sent directly to <code>api.openai.com</code>, nowhere else.</p>
         </div>
 
         <div class="field">
           <div class="field-header">
-            <label for="model">Model</label>
+            <label for="model">Model<button type="button" class="help-tip" data-help="Newest first. Mini and turbo variants only — fast and free-tier friendly. If your key rejects the newest model, step down a generation." aria-label="About model choice">?</button></label>
           </div>
           <select id="model">
             <option value="gpt-5-mini">gpt-5-mini (latest, 2026)</option>
@@ -335,43 +423,38 @@
             <option value="gpt-4o-mini">gpt-4o-mini (2024)</option>
             <option value="gpt-3.5-turbo">gpt-3.5-turbo (2023 baseline)</option>
           </select>
-          <p class="help">Newest first. Mini/turbo variants only — fast and free-tier friendly. If your key rejects the newest, step down a generation.</p>
         </div>
 
         <div class="field">
           <div class="field-header">
-            <label for="system">System prompt</label>
+            <label for="system">System prompt<button type="button" class="help-tip" data-help="The invisible first message that steers every reply. Change this and the bot becomes a different bot." aria-label="About the system prompt">?</button></label>
+            <button type="button" class="mini-btn" id="reset-system">Reset</button>
           </div>
           <textarea id="system" spellcheck="false"></textarea>
-          <button type="button" class="inline-btn" id="reset-system">Reset to default</button>
-          <p class="help">The invisible first message that steers every reply. Change this and the bot becomes a different bot.</p>
         </div>
 
         <div class="field">
           <div class="field-header">
-            <label for="temp">Temperature</label>
+            <label for="temp">Temperature<button type="button" class="help-tip" data-help="How adventurous the model is. 0 = deterministic and repetitive; 1 = balanced; 2 = chaotic. Most tasks live around 0.7–0.9." aria-label="About temperature">?</button></label>
             <span class="value" id="temp-value">0.8</span>
           </div>
           <input type="range" id="temp" min="0" max="2" step="0.1" value="0.8" />
-          <p class="help">How adventurous the model is. 0 = deterministic and repetitive; 1 = balanced; 2 = chaotic. Most tasks live around 0.7–0.9.</p>
         </div>
 
         <div class="field">
           <div class="field-header">
-            <label for="topp">Top-p</label>
+            <label for="topp">Top-p<button type="button" class="help-tip" data-help="Sampling cutoff. 1.0 considers every possible word; 0.1 keeps only the most likely ten per cent. Usually tune temperature or top-p, not both." aria-label="About top-p">?</button></label>
             <span class="value" id="topp-value">1.00</span>
           </div>
           <input type="range" id="topp" min="0.1" max="1" step="0.05" value="1" />
-          <p class="help">Sampling cutoff. 1.0 considers every possible word; 0.1 keeps only the most likely ten per cent. Usually tune temperature <em>or</em> top-p, not both.</p>
         </div>
 
         <div class="field">
           <div class="field-header">
-            <label for="maxtok">Max tokens</label>
+            <label for="maxtok">Max tokens<button type="button" class="help-tip" data-help="Hard cap on reply length. Roughly 1 token is 0.75 words. Higher = longer replies, but more cost per message." aria-label="About max tokens">?</button></label>
             <span class="value" id="maxtok-value">1024</span>
           </div>
           <input type="range" id="maxtok" min="64" max="4096" step="64" value="1024" />
-          <p class="help">Hard cap on reply length. Roughly 1 token ≈ 0.75 words. Higher = longer replies but more cost per message.</p>
         </div>
       </div>
       <div class="drawer-footer">
@@ -389,16 +472,17 @@
           <line x1="4" y1="17" x2="20" y2="17"/>
         </svg>
       </button>
-      <h1>Dad Jokes</h1>
       <div class="spacer"></div>
       <div class="stats" id="stats">0 msgs · 0 in · 0 out</div>
     </div>
 
     <div class="app">
       <main id="chat" class="chat">
-        <div class="placeholder" id="placeholder">
-          Say anything. Reply will be a dad joke about what you said. First time?
-          <a id="open-settings-link">Open settings</a> to paste your OpenAI key.
+        <div class="hero" id="placeholder">
+          <h1 class="hero-title">Dad Jokes</h1>
+          <p class="hero-tagline">A chatbot that only tells dad jokes.</p>
+          <p class="hero-hint">Say anything in the box below. The reply will be a dad joke about what you said.</p>
+          <p class="hero-cta">First time? <a id="open-settings-link">Open settings</a> to paste your OpenAI key.</p>
         </div>
       </main>
 
@@ -512,7 +596,29 @@
       menuToggle.addEventListener("click", () => setMenu(document.body.dataset.menu !== "open"));
       drawerClose.addEventListener("click", () => setMenu(false));
       backdrop.addEventListener("click", () => setMenu(false));
-      openSettingsLink?.addEventListener("click", () => setMenu(true));
+      // Event-delegate the open-settings link so it survives hero re-renders.
+      chatEl.addEventListener("click", (event) => {
+        const target = event.target;
+        if (target instanceof HTMLElement && target.id === "open-settings-link") {
+          event.preventDefault();
+          setMenu(true);
+        }
+      });
+
+      // Help tooltips: hover on desktop; tap to toggle on touch devices.
+      // Clicking anywhere else closes any open tooltip.
+      document.querySelectorAll(".help-tip").forEach((btn) => {
+        btn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          document.querySelectorAll(".help-tip.open").forEach((other) => {
+            if (other !== btn) other.classList.remove("open");
+          });
+          btn.classList.toggle("open");
+        });
+      });
+      document.addEventListener("click", () => {
+        document.querySelectorAll(".help-tip.open").forEach((b) => b.classList.remove("open"));
+      });
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && document.body.dataset.menu === "open") setMenu(false);
       });
@@ -604,14 +710,20 @@
         history.length = 0;
         tokensIn = 0;
         tokensOut = 0;
-        chatEl.innerHTML = "";
-        const ph = document.createElement("div");
-        ph.className = "placeholder";
-        ph.id = "placeholder";
-        ph.innerHTML = "Cleared. Say something to start again.";
-        chatEl.appendChild(ph);
+        renderHero();
         refreshToolbar();
       });
+
+      function renderHero() {
+        chatEl.innerHTML = `
+          <div class="hero" id="placeholder">
+            <h1 class="hero-title">Dad Jokes</h1>
+            <p class="hero-tagline">A chatbot that only tells dad jokes.</p>
+            <p class="hero-hint">Say anything in the box below. The reply will be a dad joke about what you said.</p>
+            <p class="hero-cta">First time? <a id="open-settings-link">Open settings</a> to paste your OpenAI key.</p>
+          </div>
+        `;
+      }
 
       resetAllBtn.addEventListener("click", () => {
         if (!confirm("Reset everything? This wipes the key, the system prompt, the sliders, and the conversation.")) return;
