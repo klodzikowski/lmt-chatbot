@@ -373,19 +373,20 @@
       }
       .mini-btn:hover { color: var(--fg); background: var(--surface); }
 
-      .field-actions { display: flex; gap: .3rem; align-items: center; }
-      .mini-select {
+      .preset-select {
+        display: block;
+        width: 100%;
+        margin: .25rem 0 .5rem;
         background: var(--surface-2);
         border: 1px solid var(--border-strong);
         border-radius: 6px;
-        padding: .18rem .4rem;
-        font-size: .7rem;
-        color: var(--muted);
+        padding: .35rem .55rem;
+        font-size: .78rem;
+        color: var(--fg);
         cursor: pointer;
         font-family: inherit;
-        max-width: 140px;
       }
-      .mini-select:hover { color: var(--fg); background: var(--surface); }
+      .preset-select:hover { background: var(--surface); }
       .field-note {
         font-size: .7rem;
         color: var(--muted);
@@ -501,18 +502,16 @@
         <div class="field">
           <div class="field-header">
             <label for="system">System prompt<button type="button" class="help-tip" data-help="The invisible first message that steers every reply. Change this and the bot becomes a different bot." aria-label="About the system prompt">?</button></label>
-            <div class="field-actions">
-              <select id="preset" class="mini-select" aria-label="Preset prompts">
-                <option value="">Preset…</option>
-                <option value="personal-assistant">Personal assistant</option>
-                <option value="dad-jokes">Dad jokes</option>
-                <option value="chatgpt">ChatGPT-style</option>
-                <option value="claude">Claude-style</option>
-                <option value="grok">Grok-style</option>
-              </select>
-              <button type="button" class="mini-btn" id="reset-system">Reset</button>
-            </div>
+            <button type="button" class="mini-btn" id="reset-system">Reset</button>
           </div>
+          <select id="preset" class="preset-select" aria-label="Preset prompts">
+            <option value="">Load a preset…</option>
+            <option value="personal-assistant">Personal assistant</option>
+            <option value="dad-jokes">Dad jokes</option>
+            <option value="chatgpt">ChatGPT-style</option>
+            <option value="claude">Claude-style</option>
+            <option value="grok">Grok-style</option>
+          </select>
           <p class="field-note">Branded presets are caricatures of each product's public vibe, not their real system prompts (which aren't public).</p>
           <textarea id="system" spellcheck="false"></textarea>
         </div>
