@@ -23,8 +23,6 @@ Save. Wait 30–60 seconds. Your fork is live at `https://<your-username>.github
 
 Open your fork in whichever environment suits you, edit `index.html`, commit, push. GitHub Pages rebuilds in about 30 seconds — refresh your URL to see the change.
 
-**a. In an agentic IDE.** Clone your fork and open it in [OpenAI Codex](https://openai.com/codex/) — free for a limited time (unlike Claude Code). Mac users get a native app; on Windows you can use the web app or install the plugin for VS Code / DataSpell.
-
-**b. In your IDE of choice with GitHub Copilot.** Clone your fork and open it in [JetBrains DataSpell](https://www.jetbrains.com/dataspell/) (recommended — free edu licence by linking your [GitHub Student account](https://education.github.com/pack)) or [VS Code](https://code.visualstudio.com/) (add the **Live Server** extension for instant reload). [GitHub Copilot](https://education.github.com/) is free for students and handles the boring edits.
-
-**c. Directly in VS Code in the browser.** On your fork's main page, press `.` (the period key). GitHub opens a full [VS Code in the browser](https://github.dev) at `github.dev/<your-username>/lmt-chatbot` — no install, no clone. Commit from the Source Control panel.
+- **a. In an agentic IDE.** Clone your fork and open it in [OpenAI Codex](https://openai.com/codex/) — free for a limited time (unlike Claude Code). Mac users get a native app; on Windows you can use the web app or install the plugin for VS Code / DataSpell.
+- **b. In your IDE of choice with GitHub Copilot.** Clone your fork and open it in [JetBrains DataSpell](https://www.jetbrains.com/dataspell/) (recommended — free edu licence by linking your [GitHub Student account](https://education.github.com/pack)) or [VS Code](https://code.visualstudio.com/) (add the **Live Server** extension for instant reload). [GitHub Copilot](https://education.github.com/) is free for students and handles the boring edits.
+- **c. Directly in VS Code in the browser.** On your fork's main page, press `.` (the period key). GitHub opens a full [VS Code in the browser](https://github.dev) at `github.dev/<your-username>/lmt-chatbot` — no install, no clone. Commit from the Source Control panel.
