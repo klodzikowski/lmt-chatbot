@@ -233,17 +233,19 @@
       .token-chips {
         display: flex;
         flex-wrap: wrap;
-        gap: 1px;
+        gap: 2px;
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: .92em;
-        line-height: 1.65;
+        font-size: 1.05em;
+        line-height: 1.75;
       }
       .token-chip {
-        padding: 0 2px;
-        border-radius: 3px;
+        padding: 1px 4px;
+        border-radius: 4px;
         cursor: pointer;
         white-space: pre;
         color: #f8fafc;
+        border: 0;
+        font: inherit;
       }
       .token-chip:hover { outline: 1px solid var(--accent); outline-offset: 1px; }
       .token-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -342,6 +344,10 @@
         margin: .1rem 0 .9rem;
       }
       body[data-sampling-locked="true"] .locked-note { display: block; }
+      /* The logprobs-specific note only fires when the user actually has
+         logprobs toggled on — otherwise it's noise. */
+      body[data-sampling-locked="true"] #logprobs-locked-note { display: none; }
+      body[data-sampling-locked="true"][data-logprobs-on="true"] #logprobs-locked-note { display: block; }
       body[data-sampling-locked="true"] .field.sampling input[type="range"] {
         opacity: .4;
       }
@@ -449,7 +455,7 @@
         top: 0;
         left: 0;
         height: 100vh;
-        width: min(420px, 92vw);
+        width: min(var(--drawer-width, 420px), 92vw);
         background: var(--surface);
         border-right: 1px solid var(--border);
         color: var(--fg);
@@ -460,6 +466,36 @@
         flex-direction: column;
       }
       body[data-menu="open"] aside.drawer { transform: translateX(0); }
+      /* Drag handle on the right edge of the drawer. Hidden on mobile where
+         the drawer is a modal overlay rather than a persistent sidebar. */
+      .drawer-resize {
+        position: absolute;
+        top: 0;
+        right: -3px;
+        width: 6px;
+        height: 100%;
+        cursor: ew-resize;
+        z-index: 11;
+        user-select: none;
+        touch-action: none;
+      }
+      .drawer-resize::before {
+        content: "";
+        position: absolute;
+        top: 0; bottom: 0;
+        left: 2px;
+        width: 2px;
+        background: transparent;
+        transition: background 120ms ease;
+      }
+      .drawer-resize:hover::before,
+      body.drawer-resizing .drawer-resize::before {
+        background: var(--accent);
+      }
+      body.drawer-resizing { user-select: none; cursor: ew-resize; }
+      @media (max-width: 899px) {
+        .drawer-resize { display: none; }
+      }
 
       /* Desktop: drawer behaves as a persistent sidebar. No backdrop, and
          the chat + topbar shift right to make room. User can still close the
@@ -475,8 +511,11 @@
         }
         body[data-menu="open"] .topbar,
         body[data-menu="open"] .app {
-          margin-left: min(420px, 92vw);
+          margin-left: min(var(--drawer-width, 420px), 92vw);
         }
+        body.drawer-resizing .topbar,
+        body.drawer-resizing .app,
+        body.drawer-resizing aside.drawer { transition: none; }
       }
 
       .drawer-header {
@@ -649,6 +688,22 @@
         opacity: 1;
         pointer-events: auto;
       }
+      /* Section-level tooltips carry more context, so they get more room. */
+      .help-tip.wide::after { max-width: 320px; }
+
+      .section-heading {
+        font-size: .74rem;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        margin: 1.4rem 0 .75rem;
+        padding-bottom: .35rem;
+        border-bottom: 1px solid var(--border-strong);
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+      }
 
       .drawer-footer button {
         border: 1px solid var(--border-strong);
@@ -714,6 +769,20 @@
           <textarea id="system" spellcheck="false"></textarea>
         </div>
 
+        <div class="section-heading">
+          Sampling
+          <button type="button" class="help-tip wide" data-help="Temperature and top-p both control how random the reply is, but in different ways. Temperature rescales the whole probability distribution — low values make the top tokens dominate (deterministic, repetitive), high values flatten the distribution (more creative, more chaotic). Top-p truncates the distribution — it only samples from the smallest set of tokens whose cumulative probability ≥ p. OpenAI recommends changing one at a time: combining them tends to be redundant or contradictory, and you can't tell which knob caused a change in behaviour." aria-label="About sampling">?</button>
+        </div>
+
+        <select id="sampling-preset" class="preset-select" aria-label="Sampling presets">
+          <option value="">Preset use case…</option>
+          <option value="deterministic">Email / deterministic · low temp · low top-p</option>
+          <option value="translation">Translation · low temp · high top-p</option>
+          <option value="creative">Creative writing · high temp · low top-p</option>
+          <option value="brainstorming">Brainstorming · high temp · high top-p</option>
+          <option value="chaos">Chaos · max temp · low top-p — watch it break</option>
+        </select>
+
         <div class="field sampling">
           <div class="field-header">
             <label for="temp">Temperature<button type="button" class="help-tip" data-help="How flat the probability distribution is. Low = sticks to the most likely token (like 'car'); high = less probable tokens (like 'elephant') get a chance. 0.7–0.9 is the sweet spot." aria-label="About temperature">?</button></label>
@@ -724,7 +793,7 @@
 
         <div class="field sampling">
           <div class="field-header">
-            <label for="topp">Top-p<button type="button" class="help-tip" data-help="Size of the candidate pool, by cumulative probability. 1.0 = every token in play; 0.1 = only the few most likely. Tune temperature OR top-p, not both." aria-label="About top-p">?</button></label>
+            <label for="topp">Top-p<button type="button" class="help-tip" data-help="Size of the candidate pool, by cumulative probability. 1.0 = every token in play; 0.1 = only the few most likely. Generally tune this or temperature, not both." aria-label="About top-p">?</button></label>
             <span class="value" id="topp-value">1.00</span>
           </div>
           <input type="range" id="topp" min="0.1" max="1" step="0.05" value="1" />
@@ -734,6 +803,15 @@
           This model locks temperature and top-p to the default (1.0). Pick an older model to experiment with sampling.
         </div>
 
+        <div class="field checkbox-field">
+          <input type="checkbox" id="show-logprobs" />
+          <label for="show-logprobs">Show token probabilities</label>
+          <button type="button" class="help-tip" data-help="Render each reply token as a coloured chip based on how confident the model was (green = certain, red = uncertain). Click a chip to see the top-5 alternatives. Not supported by reasoning models like gpt-5-nano." aria-label="About token probabilities">?</button>
+        </div>
+        <div class="locked-note" id="logprobs-locked-note">
+          Token probabilities aren't returned by reasoning models (gpt-5 family). The reply will render as normal markdown until you switch to an older model.
+        </div>
+
         <div class="field">
           <div class="field-header">
             <label for="maxtok">Max tokens<button type="button" class="help-tip" data-help="Hard cap on reply length. Roughly 1 token ≈ 0.75 words. Higher values allow longer replies but cost more per message." aria-label="About max tokens">?</button></label>
@@ -741,13 +819,8 @@
           </div>
           <input type="range" id="maxtok" min="64" max="4096" step="64" value="1024" />
         </div>
-
-        <div class="field checkbox-field">
-          <input type="checkbox" id="show-logprobs" />
-          <label for="show-logprobs">Show token probabilities</label>
-          <button type="button" class="help-tip" data-help="Render each reply token as a coloured chip based on how confident the model was (green = certain, red = uncertain). Click a chip to see the top-5 alternatives. Not supported by reasoning models like gpt-5-nano." aria-label="About token probabilities">?</button>
-        </div>
       </div>
+      <div class="drawer-resize" id="drawer-resize" aria-label="Resize sidebar" role="separator" aria-orientation="vertical"></div>
       <div class="drawer-footer">
         <button type="button" id="download" disabled>Download JSON</button>
         <button type="button" id="clear" disabled>Clear chat</button>
@@ -860,6 +933,17 @@
       };
       // gpt-5 reasoning-tuned variants only accept the default sampling params.
       const SAMPLING_LOCKED = (model) => /^gpt-5(\b|[-.])/i.test(model);
+      // Sampling presets lifted from Alammar & Grootendorst (2024). 'Chaos' is
+      // extra, for classroom fun — max temperature with a narrow top-p usually
+      // produces total gibberish which lands the 'don't push both extremes'
+      // lesson in one visible reply.
+      const SAMPLING_PRESETS = {
+        "deterministic":  { temperature: 0.2, top_p: 0.2 },
+        "translation":    { temperature: 0.2, top_p: 1.0 },
+        "creative":       { temperature: 1.3, top_p: 0.5 },
+        "brainstorming":  { temperature: 1.3, top_p: 1.0 },
+        "chaos":          { temperature: 2.0, top_p: 0.3 },
+      };
       function estimateCost(usage, model) {
         const p = PRICING[model];
         if (!p || !usage) return 0;
@@ -896,6 +980,7 @@
         top_p: "lmt-chatbot-top-p",
         max_tokens: "lmt-chatbot-max-tokens",
         show_logprobs: "lmt-chatbot-show-logprobs",
+        drawer_width: "lmt-chatbot-drawer-width",
       };
 
       const drawer = document.getElementById("drawer");
@@ -914,7 +999,9 @@
       const maxtokValue = document.getElementById("maxtok-value");
       const resetSystemBtn = document.getElementById("reset-system");
       const presetSelect = document.getElementById("preset");
+      const samplingPresetSelect = document.getElementById("sampling-preset");
       const showLogprobsInput = document.getElementById("show-logprobs");
+      const resizeHandle = document.getElementById("drawer-resize");
 
       const chatEl = document.getElementById("chat");
       const placeholder = document.getElementById("placeholder");
@@ -958,10 +1045,12 @@
       tempInput.addEventListener("input", () => {
         sessionStorage.setItem(KEYS.temperature, tempInput.value);
         renderSliderValues();
+        syncSamplingPresetIndicator();
       });
       toppInput.addEventListener("input", () => {
         sessionStorage.setItem(KEYS.top_p, toppInput.value);
         renderSliderValues();
+        syncSamplingPresetIndicator();
       });
       maxtokInput.addEventListener("input", () => {
         sessionStorage.setItem(KEYS.max_tokens, maxtokInput.value);
@@ -969,7 +1058,44 @@
       });
       showLogprobsInput.addEventListener("change", () => {
         sessionStorage.setItem(KEYS.show_logprobs, showLogprobsInput.checked ? "1" : "0");
+        applyLogprobsState();
       });
+
+      samplingPresetSelect.addEventListener("change", () => {
+        const key = samplingPresetSelect.value;
+        if (!key) return;
+        const preset = SAMPLING_PRESETS[key];
+        if (!preset) return;
+        tempInput.value = preset.temperature;
+        toppInput.value = preset.top_p;
+        sessionStorage.setItem(KEYS.temperature, String(preset.temperature));
+        sessionStorage.setItem(KEYS.top_p, String(preset.top_p));
+        renderSliderValues();
+      });
+
+      function findSamplingPresetKey(temperature, top_p) {
+        for (const [k, v] of Object.entries(SAMPLING_PRESETS)) {
+          if (
+            Math.abs(v.temperature - temperature) < 0.01 &&
+            Math.abs(v.top_p - top_p) < 0.01
+          ) {
+            return k;
+          }
+        }
+        return "";
+      }
+      function syncSamplingPresetIndicator() {
+        samplingPresetSelect.value = findSamplingPresetKey(
+          parseFloat(tempInput.value),
+          parseFloat(toppInput.value)
+        );
+      }
+      syncSamplingPresetIndicator();
+
+      function applyLogprobsState() {
+        document.body.dataset.logprobsOn = showLogprobsInput.checked ? "true" : "false";
+      }
+      applyLogprobsState();
 
       resetSystemBtn.addEventListener("click", () => {
         systemInput.value = DEFAULT_SYSTEM;
@@ -1039,6 +1165,38 @@
       // the user hasn't set an API key yet (in which case guide them to it).
       const isWide = window.matchMedia("(min-width: 900px)").matches;
       setMenu(isWide || !keyInput.value);
+
+      // Drawer resize: drag the right edge to change sidebar width. Persisted
+      // in sessionStorage so it survives reloads within the same tab.
+      const DRAWER_MIN = 320;
+      const DRAWER_MAX = 720;
+      function setDrawerWidth(px) {
+        const clamped = Math.max(DRAWER_MIN, Math.min(DRAWER_MAX, px));
+        document.documentElement.style.setProperty("--drawer-width", `${clamped}px`);
+        sessionStorage.setItem(KEYS.drawer_width, String(clamped));
+      }
+      const savedWidth = parseInt(sessionStorage.getItem(KEYS.drawer_width), 10);
+      if (Number.isFinite(savedWidth)) setDrawerWidth(savedWidth);
+
+      let dragging = false;
+      resizeHandle.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        dragging = true;
+        resizeHandle.setPointerCapture(event.pointerId);
+        document.body.classList.add("drawer-resizing");
+      });
+      resizeHandle.addEventListener("pointermove", (event) => {
+        if (!dragging) return;
+        setDrawerWidth(event.clientX);
+      });
+      const endDrag = (event) => {
+        if (!dragging) return;
+        dragging = false;
+        try { resizeHandle.releasePointerCapture(event.pointerId); } catch {}
+        document.body.classList.remove("drawer-resizing");
+      };
+      resizeHandle.addEventListener("pointerup", endDrag);
+      resizeHandle.addEventListener("pointercancel", endDrag);
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -1243,6 +1401,9 @@
         renderSliderValues();
         applySamplingLock();
         syncPresetIndicator();
+        syncSamplingPresetIndicator();
+        showLogprobsInput.checked = false;
+        applyLogprobsState();
         history.length = 0;
         tokensIn = 0;
         tokensOut = 0;
