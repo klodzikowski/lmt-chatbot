@@ -1,21 +1,35 @@
-# LMT Chatbot — Class 19 fork
+# LMT Chatbot
 
-Lightly branded fork of the Streamlit Community Cloud chatbot template for the Class 19 warm-up. Students deploy this (or the vanilla template) via the deploy-from-template flow; no local work is required.
+Class 19 warm-up for the 2 MA LMT Artificial Intelligence course at Adam Mickiewicz University. Two versions of the Streamlit Community Cloud chatbot template, kept side by side so we can re-run either live in class.
 
-## Deploy
+## Versions
 
-1. Push this folder to a new GitHub repo.
-2. Go to `https://share.streamlit.io/new` and select the repo.
-3. Point the main file to `streamlit_app.py`.
-4. Deploy. Paste your OpenAI API key into the running app.
+- `v1/` — the **2025** vanilla template (dad_jokes), GPT-3.5-Turbo. Imported from [klodzikowski/dad_jokes](https://github.com/klodzikowski/dad_jokes) as a historical snapshot.
+- `v2/` — the **2026** LMT fork. Seeded academic-tutor system prompt, `gpt-4o-mini` by default, British English copy, header tuned for the class.
 
-## What differs from the vanilla template
+Both apps follow the same pattern: one Python file, session-state message list, one OpenAI call per message. The only thing that changes is the branding and the system prompt.
 
-- Title and welcome copy aimed at the LMT cohort.
-- Seeded academic-tutor system prompt, with an explicit note about hallucinated citations — this sets up the responsible-AI thread in Class 21 (Thesis Writer tab) and Class 22 (evaluation).
-- Default model is `gpt-4o-mini` for cost and rate-limit headroom.
+## Deploy to Streamlit Community Cloud
 
-## What stayed the same
+Both versions deploy the same way. On [share.streamlit.io/new](https://share.streamlit.io/new):
 
-- Streamlit session-state message list (`st.session_state.messages`) — this is the "memory" students inspect in class.
-- One file, no framework, one API key field.
+- Repository: `klodzikowski/lmt-chatbot`
+- Branch: `main`
+- Main file path: `v1/streamlit_app.py` or `v2/streamlit_app.py`
+
+Click Deploy, wait about 90 seconds, paste an OpenAI API key into the running app.
+
+## Run locally
+
+From either `v1/` or `v2/`:
+
+```bash
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+Opens at `http://localhost:8501`.
+
+## Related materials
+
+Full course structure in `1 - LMT Course Materials/19 - Agents/2 - Class materials/1 - Simple chatbot in Streamlit/` on the shared drive.
