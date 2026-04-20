@@ -6,23 +6,28 @@
     <title>Dad Jokes — LMT Chatbot</title>
     <meta
       name="description"
-      content="A static OpenAI chatbot hosted on GitHub Pages for the LMT Agents module. Editable system prompt and conversation export in developer preview."
+      content="A static OpenAI chatbot hosted on GitHub Pages for the LMT Agents module. Settings drawer with system prompt, sampling controls, and conversation export."
     />
     <style>
       :root {
-        color-scheme: light;
-        --bg: #f8fafc;
-        --fg: #0f172a;
-        --muted: #64748b;
-        --border: #e2e8f0;
-        --bubble-user: #e0e7ff;
-        --bubble-assistant: #ffffff;
-        --bubble-error: #fee2e2;
-        --accent: #2563eb;
-        --dev-accent: #b45309;
-        --dev-bg: #fffbeb;
+        color-scheme: dark;
+        --bg: #0b1120;
+        --surface: #111827;
+        --surface-2: #1f2937;
+        --fg: #f8fafc;
+        --muted: #94a3b8;
+        --border: #1f2937;
+        --border-strong: #334155;
+        --accent: #60a5fa;
+        --accent-strong: #3b82f6;
+        --bubble-user: #1e3a8a;
+        --bubble-user-fg: #dbeafe;
+        --bubble-assistant: #111827;
+        --error-bg: #450a0a;
+        --error-fg: #fecaca;
       }
       * { box-sizing: border-box; }
+      html, body { height: 100%; }
       body {
         margin: 0;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter,
@@ -31,58 +36,62 @@
         color: var(--fg);
         line-height: 1.5;
       }
-      .app {
-        max-width: 720px;
-        margin: 0 auto;
-        min-height: 100vh;
+      body[data-menu="open"] { overflow: hidden; }
+
+      button { font: inherit; cursor: pointer; }
+
+      /* Top bar */
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 4;
         display: flex;
-        flex-direction: column;
-        padding: 1.25rem;
-        gap: 1rem;
-      }
-      header {
-        border: 1px solid var(--border);
-        background: #ffffff;
-        border-radius: 10px;
-        padding: 1rem 1.25rem;
-      }
-      h1 { margin: 0 0 .25rem; font-size: 1.35rem; }
-      header p.lede { margin: 0 0 .75rem; color: var(--muted); font-size: .9rem; }
-      .key-row {
-        display: flex;
-        gap: .5rem;
         align-items: center;
+        gap: .75rem;
+        padding: .75rem 1rem;
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
       }
-      input[type="password"], input[type="text"], textarea, select, button {
-        font: inherit;
-      }
-      input[type="password"], input[type="text"], textarea, select {
-        width: 100%;
-        padding: .5rem .75rem;
-        border: 1px solid var(--border);
+      .menu-toggle {
+        background: transparent;
+        border: 1px solid var(--border-strong);
         border-radius: 8px;
-        background: #ffffff;
-        color: inherit;
+        color: var(--fg);
+        width: 38px;
+        height: 38px;
+        display: grid;
+        place-items: center;
       }
-      .key-row input { flex: 1; }
-      input:focus, textarea:focus, select:focus {
-        outline: 2px solid var(--accent);
-        outline-offset: 1px;
+      .menu-toggle:hover { background: var(--surface); }
+      .menu-toggle svg { width: 18px; height: 18px; }
+      .topbar h1 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
       }
-      .key-link {
-        font-size: .8rem;
-        color: var(--accent);
-        text-decoration: none;
-        white-space: nowrap;
+      .topbar .spacer { flex: 1; }
+      .topbar .stats {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: .72rem;
+        color: var(--muted);
       }
 
+      /* App body */
+      .app {
+        max-width: 760px;
+        margin: 0 auto;
+        height: calc(100vh - 55px);
+        display: flex;
+        flex-direction: column;
+        padding: 1rem;
+      }
       main.chat {
         flex: 1;
         display: flex;
         flex-direction: column;
         gap: .5rem;
-        padding: .25rem 0;
         overflow-y: auto;
+        padding: .25rem 0;
       }
       .msg {
         max-width: 80%;
@@ -94,174 +103,302 @@
       .msg.user {
         align-self: flex-end;
         background: var(--bubble-user);
+        color: var(--bubble-user-fg);
       }
       .msg.assistant {
         align-self: flex-start;
         background: var(--bubble-assistant);
-        border: 1px solid var(--border);
+        border: 1px solid var(--border-strong);
       }
       .msg.error {
         align-self: stretch;
-        background: var(--bubble-error);
-        color: #991b1b;
+        background: var(--error-bg);
+        color: var(--error-fg);
         font-size: .9rem;
       }
       .placeholder {
         color: var(--muted);
         font-size: .9rem;
         text-align: center;
-        padding: 2rem 1rem;
+        padding: 2.5rem 1rem;
+      }
+      .placeholder a {
+        color: var(--accent);
+        cursor: pointer;
+        text-decoration: underline;
       }
 
+      /* Composer */
       form.composer {
         display: flex;
         gap: .5rem;
-        padding: .25rem 0 .5rem;
+        padding: .75rem 0 .25rem;
       }
-      form.composer input { flex: 1; }
+      form.composer input {
+        flex: 1;
+        padding: .6rem .8rem;
+        border: 1px solid var(--border-strong);
+        border-radius: 10px;
+        background: var(--surface);
+        color: var(--fg);
+        font: inherit;
+      }
+      form.composer input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
       form.composer button {
-        padding: .5rem 1.1rem;
+        padding: .6rem 1.1rem;
         border: 0;
-        border-radius: 8px;
-        background: var(--accent);
+        border-radius: 10px;
+        background: var(--accent-strong);
         color: white;
-        cursor: pointer;
       }
       form.composer button:disabled {
-        background: #94a3b8;
+        background: #475569;
         cursor: not-allowed;
       }
 
       footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: .5rem;
         color: var(--muted);
-        font-size: .75rem;
-        padding-top: .5rem;
+        font-size: .72rem;
+        text-align: center;
+        padding: .5rem 0 1rem;
       }
-      footer a, footer button {
-        color: var(--muted);
-        background: none;
-        border: 0;
-        padding: 0;
-        cursor: pointer;
-        text-decoration: underline dotted;
-      }
-      footer button:hover { color: var(--fg); }
+      footer a { color: var(--muted); }
 
-      /* Developer preview. Hidden by default; shown when ?dev=1 is in the URL. */
-      .dev-only { display: none; }
-      body[data-dev="on"] .dev-only { display: block; }
-      body[data-dev="on"] {
-        background: linear-gradient(180deg, var(--dev-bg) 0, var(--bg) 120px);
+      /* Drawer */
+      .backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, .55);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 180ms ease;
+        z-index: 9;
       }
-      .dev-banner {
-        margin-bottom: .75rem;
-        padding: .5rem .75rem;
-        border: 1px dashed var(--dev-accent);
-        border-radius: 6px;
-        color: var(--dev-accent);
-        font-size: .8rem;
-        background: rgba(254, 243, 199, .6);
+      body[data-menu="open"] .backdrop {
+        opacity: 1;
+        pointer-events: auto;
       }
-      .dev-banner strong { font-weight: 600; }
-      .dev-section {
-        margin-top: .9rem;
-        border-top: 1px dashed var(--border);
-        padding-top: .7rem;
+      aside.drawer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: min(380px, 92vw);
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        color: var(--fg);
+        transform: translateX(-100%);
+        transition: transform 200ms ease;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
       }
-      .dev-section > .label {
-        font-size: .75rem;
-        text-transform: uppercase;
-        letter-spacing: .04em;
+      body[data-menu="open"] aside.drawer { transform: translateX(0); }
+
+      .drawer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.1rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .drawer-header h2 { margin: 0; font-size: 1rem; font-weight: 600; }
+      .drawer-close {
+        background: transparent;
+        border: 0;
         color: var(--muted);
+        font-size: 1.4rem;
+        line-height: 1;
+        padding: 0 .25rem;
+      }
+      .drawer-close:hover { color: var(--fg); }
+
+      .drawer-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem 1.1rem;
+      }
+      .drawer-footer {
+        display: flex;
+        gap: .5rem;
+        justify-content: space-between;
+        padding: .75rem 1.1rem;
+        border-top: 1px solid var(--border);
+        background: var(--surface);
+      }
+
+      .field { margin-bottom: 1.1rem; }
+      .field-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: .5rem;
         margin-bottom: .35rem;
       }
-      textarea#system {
-        min-height: 96px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      .field-header label {
         font-size: .85rem;
+        font-weight: 500;
       }
-      .dev-controls {
-        display: flex;
-        flex-wrap: wrap;
-        gap: .5rem;
-        align-items: center;
-        margin-top: .5rem;
-        font-size: .8rem;
-        color: var(--muted);
-      }
-      .dev-controls button {
-        background: #ffffff;
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        padding: .3rem .6rem;
-        cursor: pointer;
-        color: var(--fg);
-      }
-      .dev-controls button:disabled {
-        color: var(--muted);
-        cursor: not-allowed;
-      }
-      .dev-controls button:hover:not(:disabled) { background: var(--dev-bg); }
-      .dev-controls select { width: auto; padding: .3rem .4rem; }
-      .dev-stats {
-        margin-left: auto;
+      .field-header .value {
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: .75rem;
+        font-size: .78rem;
+        color: var(--accent);
       }
+      .field-header .get-key {
+        font-size: .72rem;
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .field input[type="password"],
+      .field input[type="text"],
+      .field textarea,
+      .field select {
+        width: 100%;
+        padding: .55rem .7rem;
+        border: 1px solid var(--border-strong);
+        border-radius: 8px;
+        background: var(--surface-2);
+        color: var(--fg);
+        font: inherit;
+      }
+      .field textarea {
+        min-height: 110px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: .82rem;
+      }
+      .field input:focus, .field textarea:focus, .field select:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .field .help {
+        margin: .3rem 0 0;
+        font-size: .72rem;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .field input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      .field .inline-btn {
+        background: transparent;
+        border: 0;
+        color: var(--accent);
+        padding: 0;
+        font-size: .72rem;
+        margin-top: .25rem;
+      }
+
+      .drawer-footer button {
+        border: 1px solid var(--border-strong);
+        background: var(--surface-2);
+        color: var(--fg);
+        border-radius: 8px;
+        padding: .45rem .7rem;
+        font-size: .82rem;
+      }
+      .drawer-footer button:hover:not(:disabled) { background: var(--surface); }
+      .drawer-footer button:disabled { color: var(--muted); cursor: not-allowed; }
+      .drawer-footer .danger {
+        border-color: #7f1d1d;
+        color: #fecaca;
+      }
+      .drawer-footer .danger:hover:not(:disabled) { background: #3f0e0e; }
     </style>
   </head>
   <body>
-    <div class="app">
-      <div class="dev-banner dev-only">
-        <strong>Developer preview</strong> · system prompt, model, and
-        conversation export are live. Students see the clean view by default
-        at this URL without <code>?dev=1</code>.
+    <div class="backdrop" id="backdrop"></div>
+
+    <aside class="drawer" id="drawer" aria-hidden="true">
+      <div class="drawer-header">
+        <h2>Settings</h2>
+        <button class="drawer-close" id="drawer-close" aria-label="Close settings">×</button>
       </div>
-
-      <header>
-        <h1>Dad Jokes</h1>
-        <p class="lede">
-          Every reply is a dad joke. Paste an OpenAI API key to start. Key lives
-          in your browser session only — nothing is sent anywhere except
-          directly to <code>api.openai.com</code>.
-        </p>
-        <div class="key-row">
-          <input id="key" type="password" placeholder="sk-..." autocomplete="off" />
-          <a
-            class="key-link"
-            href="https://platform.openai.com/account/api-keys"
-            target="_blank"
-            rel="noopener"
-            >Get a key</a
-          >
-        </div>
-
-        <div class="dev-section dev-only">
-          <div class="label">System prompt (editable)</div>
-          <textarea id="system" spellcheck="false"></textarea>
-          <div class="dev-controls">
-            <label for="model">Model</label>
-            <select id="model">
-              <option value="gpt-4o-mini">gpt-4o-mini</option>
-              <option value="gpt-4o">gpt-4o</option>
-              <option value="gpt-4.1-mini">gpt-4.1-mini</option>
-              <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-            </select>
-            <button type="button" id="reset-system">Reset system prompt</button>
-            <button type="button" id="download" disabled>Download JSON</button>
-            <button type="button" id="clear" disabled>Clear chat</button>
-            <span class="dev-stats" id="stats">0 msgs · 0 in · 0 out</span>
+      <div class="drawer-body">
+        <div class="field">
+          <div class="field-header">
+            <label for="key">OpenAI API key</label>
+            <a class="get-key" href="https://platform.openai.com/account/api-keys"
+              target="_blank" rel="noopener">Get a key</a>
           </div>
+          <input id="key" type="password" placeholder="sk-..." autocomplete="off" />
+          <p class="help">Stored in your browser session only. Sent directly to <code>api.openai.com</code>, nowhere else.</p>
         </div>
-      </header>
 
+        <div class="field">
+          <div class="field-header">
+            <label for="model">Model</label>
+          </div>
+          <select id="model">
+            <option value="gpt-4o-mini">gpt-4o-mini (fast, cheap, good default)</option>
+            <option value="gpt-4o">gpt-4o (higher quality, slower)</option>
+            <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+            <option value="gpt-3.5-turbo">gpt-3.5-turbo (2025 baseline)</option>
+          </select>
+          <p class="help">Smaller models are faster and cheaper; bigger models hallucinate less and write better but cost more per message.</p>
+        </div>
+
+        <div class="field">
+          <div class="field-header">
+            <label for="system">System prompt</label>
+          </div>
+          <textarea id="system" spellcheck="false"></textarea>
+          <button type="button" class="inline-btn" id="reset-system">Reset to default</button>
+          <p class="help">The invisible first message that steers every reply. Change this and the bot becomes a different bot.</p>
+        </div>
+
+        <div class="field">
+          <div class="field-header">
+            <label for="temp">Temperature</label>
+            <span class="value" id="temp-value">0.8</span>
+          </div>
+          <input type="range" id="temp" min="0" max="2" step="0.1" value="0.8" />
+          <p class="help">How adventurous the model is. 0 = deterministic and repetitive; 1 = balanced; 2 = chaotic. Most tasks live around 0.7–0.9.</p>
+        </div>
+
+        <div class="field">
+          <div class="field-header">
+            <label for="topp">Top-p</label>
+            <span class="value" id="topp-value">1.00</span>
+          </div>
+          <input type="range" id="topp" min="0.1" max="1" step="0.05" value="1" />
+          <p class="help">Sampling cutoff. 1.0 considers every possible word; 0.1 keeps only the most likely ten per cent. Usually tune temperature <em>or</em> top-p, not both.</p>
+        </div>
+
+        <div class="field">
+          <div class="field-header">
+            <label for="maxtok">Max tokens</label>
+            <span class="value" id="maxtok-value">1024</span>
+          </div>
+          <input type="range" id="maxtok" min="64" max="4096" step="64" value="1024" />
+          <p class="help">Hard cap on reply length. Roughly 1 token ≈ 0.75 words. Higher = longer replies but more cost per message.</p>
+        </div>
+      </div>
+      <div class="drawer-footer">
+        <button type="button" id="download" disabled>Download JSON</button>
+        <button type="button" id="clear" disabled>Clear chat</button>
+        <button type="button" id="reset-all" class="danger">Reset all</button>
+      </div>
+    </aside>
+
+    <div class="topbar">
+      <button class="menu-toggle" id="menu-toggle" aria-label="Open settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="4" y1="7" x2="20" y2="7"/>
+          <line x1="4" y1="12" x2="20" y2="12"/>
+          <line x1="4" y1="17" x2="20" y2="17"/>
+        </svg>
+      </button>
+      <h1>Dad Jokes</h1>
+      <div class="spacer"></div>
+      <div class="stats" id="stats">0 msgs · 0 in · 0 out</div>
+    </div>
+
+    <div class="app">
       <main id="chat" class="chat">
         <div class="placeholder" id="placeholder">
-          Say anything. Reply will be a dad joke about what you said.
+          Say anything. Reply will be a dad joke about what you said. First time?
+          <a id="open-settings-link">Open settings</a> to paste your OpenAI key.
         </div>
       </main>
 
@@ -277,13 +414,10 @@
       </form>
 
       <footer>
-        <span>
-          LMT Chatbot · Class 19 ·
-          <a href="https://github.com/klodzikowski/lmt-chatbot" target="_blank" rel="noopener"
-            >source</a
-          >
-        </span>
-        <button type="button" id="dev-toggle">Developer preview</button>
+        LMT Chatbot · Class 19 · static on GitHub Pages ·
+        <a href="https://github.com/klodzikowski/lmt-chatbot" target="_blank" rel="noopener"
+          >source</a
+        >
       </footer>
     </div>
 
@@ -292,67 +426,106 @@
         "You are a dad. Every response must be a relevant dad joke about what " +
         "the user just said. Keep it short, groan-worthy, and family friendly. " +
         "British English. No emojis.";
-      const DEFAULT_MODEL = "gpt-4o-mini";
-      const KEY_STORAGE = "lmt-chatbot-openai-key";
-      const SYSTEM_STORAGE = "lmt-chatbot-system-prompt";
-      const MODEL_STORAGE = "lmt-chatbot-model";
+      const DEFAULTS = {
+        model: "gpt-4o-mini",
+        temperature: 0.8,
+        top_p: 1.0,
+        max_tokens: 1024,
+      };
+      const KEYS = {
+        apiKey: "lmt-chatbot-openai-key",
+        system: "lmt-chatbot-system-prompt",
+        model: "lmt-chatbot-model",
+        temperature: "lmt-chatbot-temperature",
+        top_p: "lmt-chatbot-top-p",
+        max_tokens: "lmt-chatbot-max-tokens",
+      };
 
-      const params = new URLSearchParams(window.location.search);
-      const devMode = params.get("dev") === "1";
-      document.body.dataset.dev = devMode ? "on" : "off";
+      const drawer = document.getElementById("drawer");
+      const backdrop = document.getElementById("backdrop");
+      const menuToggle = document.getElementById("menu-toggle");
+      const drawerClose = document.getElementById("drawer-close");
+      const openSettingsLink = document.getElementById("open-settings-link");
 
       const keyInput = document.getElementById("key");
-      const systemInput = document.getElementById("system");
       const modelSelect = document.getElementById("model");
+      const systemInput = document.getElementById("system");
+      const tempInput = document.getElementById("temp");
+      const toppInput = document.getElementById("topp");
+      const maxtokInput = document.getElementById("maxtok");
+      const tempValue = document.getElementById("temp-value");
+      const toppValue = document.getElementById("topp-value");
+      const maxtokValue = document.getElementById("maxtok-value");
       const resetSystemBtn = document.getElementById("reset-system");
+
       const chatEl = document.getElementById("chat");
       const placeholder = document.getElementById("placeholder");
       const form = document.getElementById("composer");
       const input = document.getElementById("input");
       const sendBtn = document.getElementById("send");
+      const statsEl = document.getElementById("stats");
       const downloadBtn = document.getElementById("download");
       const clearBtn = document.getElementById("clear");
-      const statsEl = document.getElementById("stats");
-      const devToggle = document.getElementById("dev-toggle");
+      const resetAllBtn = document.getElementById("reset-all");
 
       const history = [];
       let tokensIn = 0;
       let tokensOut = 0;
 
-      keyInput.value = sessionStorage.getItem(KEY_STORAGE) || "";
-      keyInput.addEventListener("input", () => {
-        if (keyInput.value) sessionStorage.setItem(KEY_STORAGE, keyInput.value);
-        else sessionStorage.removeItem(KEY_STORAGE);
+      // Hydrate controls from sessionStorage.
+      keyInput.value = sessionStorage.getItem(KEYS.apiKey) || "";
+      systemInput.value = sessionStorage.getItem(KEYS.system) || DEFAULT_SYSTEM;
+      modelSelect.value = sessionStorage.getItem(KEYS.model) || DEFAULTS.model;
+      tempInput.value = sessionStorage.getItem(KEYS.temperature) ?? DEFAULTS.temperature;
+      toppInput.value = sessionStorage.getItem(KEYS.top_p) ?? DEFAULTS.top_p;
+      maxtokInput.value = sessionStorage.getItem(KEYS.max_tokens) ?? DEFAULTS.max_tokens;
+      renderSliderValues();
+
+      // Persist on input.
+      keyInput.addEventListener("input", () => setOrClear(KEYS.apiKey, keyInput.value));
+      systemInput.addEventListener("input", () => setOrClear(KEYS.system, systemInput.value));
+      modelSelect.addEventListener("change", () => setOrClear(KEYS.model, modelSelect.value));
+      tempInput.addEventListener("input", () => {
+        sessionStorage.setItem(KEYS.temperature, tempInput.value);
+        renderSliderValues();
+      });
+      toppInput.addEventListener("input", () => {
+        sessionStorage.setItem(KEYS.top_p, toppInput.value);
+        renderSliderValues();
+      });
+      maxtokInput.addEventListener("input", () => {
+        sessionStorage.setItem(KEYS.max_tokens, maxtokInput.value);
+        renderSliderValues();
       });
 
-      systemInput.value = sessionStorage.getItem(SYSTEM_STORAGE) || DEFAULT_SYSTEM;
-      systemInput.addEventListener("input", () => {
-        sessionStorage.setItem(SYSTEM_STORAGE, systemInput.value);
-      });
       resetSystemBtn.addEventListener("click", () => {
         systemInput.value = DEFAULT_SYSTEM;
-        sessionStorage.setItem(SYSTEM_STORAGE, DEFAULT_SYSTEM);
+        sessionStorage.setItem(KEYS.system, DEFAULT_SYSTEM);
       });
 
-      modelSelect.value = sessionStorage.getItem(MODEL_STORAGE) || DEFAULT_MODEL;
-      modelSelect.addEventListener("change", () => {
-        sessionStorage.setItem(MODEL_STORAGE, modelSelect.value);
+      // Drawer open/close.
+      function setMenu(open) {
+        document.body.dataset.menu = open ? "open" : "closed";
+        drawer.setAttribute("aria-hidden", open ? "false" : "true");
+      }
+      menuToggle.addEventListener("click", () => setMenu(document.body.dataset.menu !== "open"));
+      drawerClose.addEventListener("click", () => setMenu(false));
+      backdrop.addEventListener("click", () => setMenu(false));
+      openSettingsLink?.addEventListener("click", () => setMenu(true));
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && document.body.dataset.menu === "open") setMenu(false);
       });
 
-      devToggle.textContent = devMode ? "Exit developer preview" : "Developer preview";
-      devToggle.addEventListener("click", () => {
-        const next = new URLSearchParams(location.search);
-        if (devMode) next.delete("dev"); else next.set("dev", "1");
-        const query = next.toString();
-        location.search = query ? "?" + query : "";
-      });
+      // Open drawer on first visit when no key is set.
+      if (!keyInput.value) setMenu(true); else setMenu(false);
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         const text = input.value.trim();
         if (!text) return;
         if (!keyInput.value) {
-          addMessage("error", "Paste your OpenAI API key above first.");
+          addMessage("error", "Paste an OpenAI API key in Settings first.");
+          setMenu(true);
           return;
         }
 
@@ -369,12 +542,15 @@
         const loading = addMessage("assistant", "…");
 
         try {
-          const { reply, usage } = await callOpenAI(
-            keyInput.value,
-            modelSelect.value,
-            systemInput.value,
-            history,
-          );
+          const { reply, usage } = await callOpenAI({
+            apiKey: keyInput.value,
+            model: modelSelect.value,
+            systemPrompt: systemInput.value,
+            messages: history,
+            temperature: parseFloat(tempInput.value),
+            top_p: parseFloat(toppInput.value),
+            max_tokens: parseInt(maxtokInput.value, 10),
+          });
           loading.textContent = reply;
           history.push({
             role: "assistant",
@@ -388,7 +564,7 @@
         } catch (err) {
           loading.remove();
           addMessage("error", err.message || String(err));
-          history.pop(); // drop user turn on failure so retries don't compound
+          history.pop();
         } finally {
           sendBtn.disabled = false;
           refreshToolbar();
@@ -401,12 +577,15 @@
           exported_at: new Date().toISOString(),
           model: modelSelect.value,
           system_prompt: systemInput.value,
+          sampling: {
+            temperature: parseFloat(tempInput.value),
+            top_p: parseFloat(toppInput.value),
+            max_tokens: parseInt(maxtokInput.value, 10),
+          },
           tokens: { prompt: tokensIn, completion: tokensOut },
           messages: history,
         };
-        const blob = new Blob([JSON.stringify(payload, null, 2)], {
-          type: "application/json",
-        });
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -420,7 +599,7 @@
 
       clearBtn.addEventListener("click", () => {
         if (!history.length) return;
-        if (!confirm("Clear the conversation? Key and system prompt stay.")) return;
+        if (!confirm("Clear the conversation? Key and settings stay.")) return;
         history.length = 0;
         tokensIn = 0;
         tokensOut = 0;
@@ -428,30 +607,47 @@
         const ph = document.createElement("div");
         ph.className = "placeholder";
         ph.id = "placeholder";
-        ph.textContent = "Say anything. Reply will be a dad joke about what you said.";
+        ph.innerHTML = "Cleared. Say something to start again.";
         chatEl.appendChild(ph);
         refreshToolbar();
       });
 
-      async function callOpenAI(apiKey, model, systemPrompt, messages) {
-        const response = await fetch(
-          "https://api.openai.com/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-              model,
-              messages: [
-                { role: "system", content: systemPrompt },
-                ...messages.map(({ role, content }) => ({ role, content })),
-              ],
-              temperature: 0.8,
-            }),
-          }
-        );
+      resetAllBtn.addEventListener("click", () => {
+        if (!confirm("Reset everything? This wipes the key, the system prompt, the sliders, and the conversation.")) return;
+        Object.values(KEYS).forEach((k) => sessionStorage.removeItem(k));
+        keyInput.value = "";
+        systemInput.value = DEFAULT_SYSTEM;
+        modelSelect.value = DEFAULTS.model;
+        tempInput.value = DEFAULTS.temperature;
+        toppInput.value = DEFAULTS.top_p;
+        maxtokInput.value = DEFAULTS.max_tokens;
+        renderSliderValues();
+        history.length = 0;
+        tokensIn = 0;
+        tokensOut = 0;
+        chatEl.innerHTML = "";
+        refreshToolbar();
+        setMenu(true);
+      });
+
+      async function callOpenAI({ apiKey, model, systemPrompt, messages, temperature, top_p, max_tokens }) {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...messages.map(({ role, content }) => ({ role, content })),
+            ],
+            temperature,
+            top_p,
+            max_tokens,
+          }),
+        });
         const body = await response.json().catch(() => ({}));
         if (!response.ok) {
           const msg = body?.error?.message ?? `HTTP ${response.status}`;
@@ -477,7 +673,18 @@
         downloadBtn.disabled = !hasHistory;
         clearBtn.disabled = !hasHistory;
         statsEl.textContent =
-          `${history.length} msgs · ${tokensIn} in · ${tokensOut} out`;
+          `${history.length} msg${history.length === 1 ? "" : "s"} · ${tokensIn} in · ${tokensOut} out`;
+      }
+
+      function renderSliderValues() {
+        tempValue.textContent = parseFloat(tempInput.value).toFixed(1);
+        toppValue.textContent = parseFloat(toppInput.value).toFixed(2);
+        maxtokValue.textContent = parseInt(maxtokInput.value, 10).toLocaleString();
+      }
+
+      function setOrClear(storageKey, value) {
+        if (value) sessionStorage.setItem(storageKey, value);
+        else sessionStorage.removeItem(storageKey);
       }
     </script>
   </body>
