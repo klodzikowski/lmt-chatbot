@@ -472,8 +472,8 @@
             <label for="model">Model<button type="button" class="help-tip" data-help="Newest first. Mini and turbo variants only — fast and free-tier friendly. If your key rejects the newest model, step down a generation." aria-label="About model choice">?</button></label>
           </div>
           <select id="model">
-            <option value="gpt-5-mini">gpt-5-mini · 2026 · $0.25 in / $2.00 out · locked sampling</option>
-            <option value="gpt-4.1-mini">gpt-4.1-mini · 2025 · $0.40 in / $1.60 out</option>
+            <option value="gpt-5-nano">gpt-5-nano · 2026 · $0.05 in / $0.40 out · locked sampling</option>
+            <option value="gpt-4.1-nano">gpt-4.1-nano · 2025 · $0.10 in / $0.40 out</option>
             <option value="gpt-4o-mini">gpt-4o-mini · 2024 · $0.15 in / $0.60 out</option>
             <option value="gpt-3.5-turbo">gpt-3.5-turbo · 2023 · $0.50 in / $1.50 out</option>
           </select>
@@ -632,8 +632,8 @@
       // Rough April-2026 USD per 1M tokens. Values are ballpark for teaching —
       // check platform.openai.com/pricing for current rates before relying on them.
       const PRICING = {
-        "gpt-5-mini":     { in: 0.25, out: 2.00 },
-        "gpt-4.1-mini":   { in: 0.40, out: 1.60 },
+        "gpt-5-nano":     { in: 0.05, out: 0.40 },
+        "gpt-4.1-nano":   { in: 0.10, out: 0.40 },
         "gpt-4o-mini":    { in: 0.15, out: 0.60 },
         "gpt-3.5-turbo":  { in: 0.50, out: 1.50 },
       };
