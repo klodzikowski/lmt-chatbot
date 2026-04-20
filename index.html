@@ -414,7 +414,7 @@
       </form>
 
       <footer>
-        LMT Chatbot · Class 19 · static on GitHub Pages ·
+        Static chatbot on GitHub Pages ·
         <a href="https://github.com/klodzikowski/lmt-chatbot" target="_blank" rel="noopener"
           >source</a
         >
@@ -632,22 +632,32 @@
       });
 
       async function callOpenAI({ apiKey, model, systemPrompt, messages, temperature, top_p, max_tokens }) {
+        // Newer models (gpt-5, gpt-4.1, gpt-4o) want `max_completion_tokens`;
+        // legacy chat models (gpt-3.5-turbo) still want `max_tokens`. Send both
+        // and let the server pick whichever it accepts — OpenAI ignores unknown
+        // fields when the known one is present, and this sidesteps the split.
+        const payload = {
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...messages.map(({ role, content }) => ({ role, content })),
+          ],
+          temperature,
+          top_p,
+        };
+        if (model.startsWith("gpt-3.5")) {
+          payload.max_tokens = max_tokens;
+        } else {
+          payload.max_completion_tokens = max_tokens;
+        }
+
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiKey}`,
           },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              ...messages.map(({ role, content }) => ({ role, content })),
-            ],
-            temperature,
-            top_p,
-            max_tokens,
-          }),
+          body: JSON.stringify(payload),
         });
         const body = await response.json().catch(() => ({}));
         if (!response.ok) {
