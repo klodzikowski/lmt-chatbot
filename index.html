@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dad Jokes — LMT Chatbot</title>
+    <meta
+      name="description"
+      content="A static OpenAI chatbot hosted on GitHub Pages for the LMT Agents module. Editable system prompt and conversation export in developer preview."
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f8fafc;
+        --fg: #0f172a;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --bubble-user: #e0e7ff;
+        --bubble-assistant: #ffffff;
+        --bubble-error: #fee2e2;
+        --accent: #2563eb;
+        --dev-accent: #b45309;
+        --dev-bg: #fffbeb;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter,
+          system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        line-height: 1.5;
+      }
+      .app {
+        max-width: 720px;
+        margin: 0 auto;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding: 1.25rem;
+        gap: 1rem;
+      }
+      header {
+        border: 1px solid var(--border);
+        background: #ffffff;
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+      }
+      h1 { margin: 0 0 .25rem; font-size: 1.35rem; }
+      header p.lede { margin: 0 0 .75rem; color: var(--muted); font-size: .9rem; }
+      .key-row {
+        display: flex;
+        gap: .5rem;
+        align-items: center;
+      }
+      input[type="password"], input[type="text"], textarea, select, button {
+        font: inherit;
+      }
+      input[type="password"], input[type="text"], textarea, select {
+        width: 100%;
+        padding: .5rem .75rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #ffffff;
+        color: inherit;
+      }
+      .key-row input { flex: 1; }
+      input:focus, textarea:focus, select:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .key-link {
+        font-size: .8rem;
+        color: var(--accent);
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      main.chat {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+        padding: .25rem 0;
+        overflow-y: auto;
+      }
+      .msg {
+        max-width: 80%;
+        padding: .6rem .85rem;
+        border-radius: 12px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .msg.user {
+        align-self: flex-end;
+        background: var(--bubble-user);
+      }
+      .msg.assistant {
+        align-self: flex-start;
+        background: var(--bubble-assistant);
+        border: 1px solid var(--border);
+      }
+      .msg.error {
+        align-self: stretch;
+        background: var(--bubble-error);
+        color: #991b1b;
+        font-size: .9rem;
+      }
+      .placeholder {
+        color: var(--muted);
+        font-size: .9rem;
+        text-align: center;
+        padding: 2rem 1rem;
+      }
+
+      form.composer {
+        display: flex;
+        gap: .5rem;
+        padding: .25rem 0 .5rem;
+      }
+      form.composer input { flex: 1; }
+      form.composer button {
+        padding: .5rem 1.1rem;
+        border: 0;
+        border-radius: 8px;
+        background: var(--accent);
+        color: white;
+        cursor: pointer;
+      }
+      form.composer button:disabled {
+        background: #94a3b8;
+        cursor: not-allowed;
+      }
+
+      footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: .5rem;
+        color: var(--muted);
+        font-size: .75rem;
+        padding-top: .5rem;
+      }
+      footer a, footer button {
+        color: var(--muted);
+        background: none;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+        text-decoration: underline dotted;
+      }
+      footer button:hover { color: var(--fg); }
+
+      /* Developer preview. Hidden by default; shown when ?dev=1 is in the URL. */
+      .dev-only { display: none; }
+      body[data-dev="on"] .dev-only { display: block; }
+      body[data-dev="on"] {
+        background: linear-gradient(180deg, var(--dev-bg) 0, var(--bg) 120px);
+      }
+      .dev-banner {
+        margin-bottom: .75rem;
+        padding: .5rem .75rem;
+        border: 1px dashed var(--dev-accent);
+        border-radius: 6px;
+        color: var(--dev-accent);
+        font-size: .8rem;
+        background: rgba(254, 243, 199, .6);
+      }
+      .dev-banner strong { font-weight: 600; }
+      .dev-section {
+        margin-top: .9rem;
+        border-top: 1px dashed var(--border);
+        padding-top: .7rem;
+      }
+      .dev-section > .label {
+        font-size: .75rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: var(--muted);
+        margin-bottom: .35rem;
+      }
+      textarea#system {
+        min-height: 96px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: .85rem;
+      }
+      .dev-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+        align-items: center;
+        margin-top: .5rem;
+        font-size: .8rem;
+        color: var(--muted);
+      }
+      .dev-controls button {
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: .3rem .6rem;
+        cursor: pointer;
+        color: var(--fg);
+      }
+      .dev-controls button:disabled {
+        color: var(--muted);
+        cursor: not-allowed;
+      }
+      .dev-controls button:hover:not(:disabled) { background: var(--dev-bg); }
+      .dev-controls select { width: auto; padding: .3rem .4rem; }
+      .dev-stats {
+        margin-left: auto;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: .75rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="dev-banner dev-only">
+        <strong>Developer preview</strong> · system prompt, model, and
+        conversation export are live. Students see the clean view by default
+        at this URL without <code>?dev=1</code>.
+      </div>
+
+      <header>
+        <h1>Dad Jokes</h1>
+        <p class="lede">
+          Every reply is a dad joke. Paste an OpenAI API key to start. Key lives
+          in your browser session only — nothing is sent anywhere except
+          directly to <code>api.openai.com</code>.
+        </p>
+        <div class="key-row">
+          <input id="key" type="password" placeholder="sk-..." autocomplete="off" />
+          <a
+            class="key-link"
+            href="https://platform.openai.com/account/api-keys"
+            target="_blank"
+            rel="noopener"
+            >Get a key</a
+          >
+        </div>
+
+        <div class="dev-section dev-only">
+          <div class="label">System prompt (editable)</div>
+          <textarea id="system" spellcheck="false"></textarea>
+          <div class="dev-controls">
+            <label for="model">Model</label>
+            <select id="model">
+              <option value="gpt-4o-mini">gpt-4o-mini</option>
+              <option value="gpt-4o">gpt-4o</option>
+              <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+              <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+            </select>
+            <button type="button" id="reset-system">Reset system prompt</button>
+            <button type="button" id="download" disabled>Download JSON</button>
+            <button type="button" id="clear" disabled>Clear chat</button>
+            <span class="dev-stats" id="stats">0 msgs · 0 in · 0 out</span>
+          </div>
+        </div>
+      </header>
+
+      <main id="chat" class="chat">
+        <div class="placeholder" id="placeholder">
+          Say anything. Reply will be a dad joke about what you said.
+        </div>
+      </main>
+
+      <form id="composer" class="composer">
+        <input
+          id="input"
+          type="text"
+          placeholder="Tell me about your day..."
+          autocomplete="off"
+          required
+        />
+        <button id="send" type="submit">Send</button>
+      </form>
+
+      <footer>
+        <span>
+          LMT Chatbot · Class 19 ·
+          <a href="https://github.com/klodzikowski/lmt-chatbot" target="_blank" rel="noopener"
+            >source</a
+          >
+        </span>
+        <button type="button" id="dev-toggle">Developer preview</button>
+      </footer>
+    </div>
+
+    <script>
+      const DEFAULT_SYSTEM =
+        "You are a dad. Every response must be a relevant dad joke about what " +
+        "the user just said. Keep it short, groan-worthy, and family friendly. " +
+        "British English. No emojis.";
+      const DEFAULT_MODEL = "gpt-4o-mini";
+      const KEY_STORAGE = "lmt-chatbot-openai-key";
+      const SYSTEM_STORAGE = "lmt-chatbot-system-prompt";
+      const MODEL_STORAGE = "lmt-chatbot-model";
+
+      const params = new URLSearchParams(window.location.search);
+      const devMode = params.get("dev") === "1";
+      document.body.dataset.dev = devMode ? "on" : "off";
+
+      const keyInput = document.getElementById("key");
+      const systemInput = document.getElementById("system");
+      const modelSelect = document.getElementById("model");
+      const resetSystemBtn = document.getElementById("reset-system");
+      const chatEl = document.getElementById("chat");
+      const placeholder = document.getElementById("placeholder");
+      const form = document.getElementById("composer");
+      const input = document.getElementById("input");
+      const sendBtn = document.getElementById("send");
+      const downloadBtn = document.getElementById("download");
+      const clearBtn = document.getElementById("clear");
+      const statsEl = document.getElementById("stats");
+      const devToggle = document.getElementById("dev-toggle");
+
+      const history = [];
+      let tokensIn = 0;
+      let tokensOut = 0;
+
+      keyInput.value = sessionStorage.getItem(KEY_STORAGE) || "";
+      keyInput.addEventListener("input", () => {
+        if (keyInput.value) sessionStorage.setItem(KEY_STORAGE, keyInput.value);
+        else sessionStorage.removeItem(KEY_STORAGE);
+      });
+
+      systemInput.value = sessionStorage.getItem(SYSTEM_STORAGE) || DEFAULT_SYSTEM;
+      systemInput.addEventListener("input", () => {
+        sessionStorage.setItem(SYSTEM_STORAGE, systemInput.value);
+      });
+      resetSystemBtn.addEventListener("click", () => {
+        systemInput.value = DEFAULT_SYSTEM;
+        sessionStorage.setItem(SYSTEM_STORAGE, DEFAULT_SYSTEM);
+      });
+
+      modelSelect.value = sessionStorage.getItem(MODEL_STORAGE) || DEFAULT_MODEL;
+      modelSelect.addEventListener("change", () => {
+        sessionStorage.setItem(MODEL_STORAGE, modelSelect.value);
+      });
+
+      devToggle.textContent = devMode ? "Exit developer preview" : "Developer preview";
+      devToggle.addEventListener("click", () => {
+        const next = new URLSearchParams(location.search);
+        if (devMode) next.delete("dev"); else next.set("dev", "1");
+        const query = next.toString();
+        location.search = query ? "?" + query : "";
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+        if (!keyInput.value) {
+          addMessage("error", "Paste your OpenAI API key above first.");
+          return;
+        }
+
+        if (placeholder) placeholder.remove();
+        addMessage("user", text);
+        history.push({
+          role: "user",
+          content: text,
+          timestamp: new Date().toISOString(),
+        });
+        input.value = "";
+        sendBtn.disabled = true;
+        refreshToolbar();
+        const loading = addMessage("assistant", "…");
+
+        try {
+          const { reply, usage } = await callOpenAI(
+            keyInput.value,
+            modelSelect.value,
+            systemInput.value,
+            history,
+          );
+          loading.textContent = reply;
+          history.push({
+            role: "assistant",
+            content: reply,
+            timestamp: new Date().toISOString(),
+          });
+          if (usage) {
+            tokensIn += usage.prompt_tokens || 0;
+            tokensOut += usage.completion_tokens || 0;
+          }
+        } catch (err) {
+          loading.remove();
+          addMessage("error", err.message || String(err));
+          history.pop(); // drop user turn on failure so retries don't compound
+        } finally {
+          sendBtn.disabled = false;
+          refreshToolbar();
+          input.focus();
+        }
+      });
+
+      downloadBtn.addEventListener("click", () => {
+        const payload = {
+          exported_at: new Date().toISOString(),
+          model: modelSelect.value,
+          system_prompt: systemInput.value,
+          tokens: { prompt: tokensIn, completion: tokensOut },
+          messages: history,
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+        a.download = `lmt-chatbot-${stamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
+
+      clearBtn.addEventListener("click", () => {
+        if (!history.length) return;
+        if (!confirm("Clear the conversation? Key and system prompt stay.")) return;
+        history.length = 0;
+        tokensIn = 0;
+        tokensOut = 0;
+        chatEl.innerHTML = "";
+        const ph = document.createElement("div");
+        ph.className = "placeholder";
+        ph.id = "placeholder";
+        ph.textContent = "Say anything. Reply will be a dad joke about what you said.";
+        chatEl.appendChild(ph);
+        refreshToolbar();
+      });
+
+      async function callOpenAI(apiKey, model, systemPrompt, messages) {
+        const response = await fetch(
+          "https://api.openai.com/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: "system", content: systemPrompt },
+                ...messages.map(({ role, content }) => ({ role, content })),
+              ],
+              temperature: 0.8,
+            }),
+          }
+        );
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const msg = body?.error?.message ?? `HTTP ${response.status}`;
+          throw new Error(msg);
+        }
+        return {
+          reply: body.choices?.[0]?.message?.content ?? "",
+          usage: body.usage,
+        };
+      }
+
+      function addMessage(role, text) {
+        const el = document.createElement("div");
+        el.className = `msg ${role}`;
+        el.textContent = text;
+        chatEl.appendChild(el);
+        el.scrollIntoView({ behavior: "smooth", block: "end" });
+        return el;
+      }
+
+      function refreshToolbar() {
+        const hasHistory = history.length > 0;
+        downloadBtn.disabled = !hasHistory;
+        clearBtn.disabled = !hasHistory;
+        statsEl.textContent =
+          `${history.length} msgs · ${tokensIn} in · ${tokensOut} out`;
+      }
+    </script>
+  </body>
+</html>

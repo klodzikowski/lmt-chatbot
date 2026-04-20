@@ -1,35 +1,42 @@
 # LMT Chatbot
 
-Class 19 warm-up for the 2 MA LMT Artificial Intelligence course at Adam Mickiewicz University. Two versions of the Streamlit Community Cloud chatbot template, kept side by side so we can re-run either live in class.
+A static dad-jokes chatbot for the Class 19 warm-up of the 2 MA LMT Artificial Intelligence course at Adam Mickiewicz University. One HTML file, no framework, no build step, no server. Calls OpenAI from the browser with the user's own API key.
 
-## Versions
+## Live
 
-- `v1/` — the **2025** vanilla template (dad_jokes), GPT-3.5-Turbo. Imported from [klodzikowski/dad_jokes](https://github.com/klodzikowski/dad_jokes) as a historical snapshot.
-- `v2/` — the **2026** LMT fork. Seeded academic-tutor system prompt, `gpt-4o-mini` by default, British English copy, header tuned for the class.
+[https://klodzikowski.github.io/lmt-chatbot/](https://klodzikowski.github.io/lmt-chatbot/)
 
-Both apps follow the same pattern: one Python file, session-state message list, one OpenAI call per message. The only thing that changes is the branding and the system prompt.
+Paste your OpenAI API key into the field at the top. The key stays in `sessionStorage` and is sent only to `api.openai.com`.
 
-## Deploy to Streamlit Community Cloud
+## Developer preview
 
-Both versions deploy the same way. On [share.streamlit.io/new](https://share.streamlit.io/new):
+Append `?dev=1` to the URL — or click **Developer preview** in the footer — to reveal:
 
-- Repository: `klodzikowski/lmt-chatbot`
-- Branch: `main`
-- Main file path: `v1/streamlit_app.py` or `v2/streamlit_app.py`
+- Editable system prompt (with Reset button).
+- Model selector (defaults to `gpt-4o-mini`).
+- Download the full conversation as JSON (system prompt, model, messages, token totals).
+- Clear the chat.
+- Running tally of messages and prompt/completion tokens.
 
-Click Deploy, wait about 90 seconds, paste an OpenAI API key into the running app.
+Normal users land at the clean view. Students get taught about the dev features once they fork and study the code.
 
-## Run locally
+## Student workflow (Class 19, no install)
 
-From either `v1/` or `v2/`:
+1. Fork this repo on GitHub (button top right).
+2. On your fork, press `.` — GitHub opens a full VS Code in the browser at `github.dev/<your-username>/lmt-chatbot`.
+3. Open `index.html`, change `DEFAULT_SYSTEM` near the bottom of the `<script>` (or `h1`, colours, anything else).
+4. Commit from the Source Control pane in the left sidebar.
+5. Wait ~30–60 seconds. GitHub Pages rebuilds your fork. Refresh `https://<your-username>.github.io/lmt-chatbot/`.
 
-```bash
-pip install -r requirements.txt
-streamlit run streamlit_app.py
-```
+Free, zero install, no Python, no Streamlit account.
 
-Opens at `http://localhost:8501`.
+## Run locally (if you want instant feedback)
 
-## Related materials
+Open `index.html` in a browser directly, or for hot reload:
 
-Full course structure in `1 - LMT Course Materials/19 - Agents/2 - Class materials/1 - Simple chatbot in Streamlit/` on the shared drive.
+- VS Code with the **Live Server** extension: right-click `index.html` → Open with Live Server.
+- Or `python3 -m http.server 8000` and visit `http://localhost:8000`.
+
+## Historical reference
+
+- `v1/` — the 2025 Streamlit version of this chatbot. Deployed to Streamlit Community Cloud last year; kept here as a snapshot of what the deploy-from-template flow produced. Still runs if you `streamlit run v1/streamlit_app.py`.
