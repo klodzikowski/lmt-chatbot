@@ -4,9 +4,7 @@ A minimal LLM chatbot as a single HTML file, hosted on GitHub Pages. Fork it, ma
 
 ## 1. Try the live demo
 
-[klodzikowski.github.io/lmt-chatbot](https://klodzikowski.github.io/lmt-chatbot/)
-
-This is the skeleton we'll build on today. Everything you need to get started is in the app itself — open the drawer, follow the cues.
+Here is the [skeleton app](https://klodzikowski.github.io/lmt-chatbot/) we'll build on today. Everything you need to get started is in the app itself — open the drawer, follow the cues.
 
 ## 2. Fork the repository
 
