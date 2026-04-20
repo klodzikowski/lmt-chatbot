@@ -1492,6 +1492,32 @@ Preset use cases (temperature × top-p):
         let id = null;
         const logprobsContent = [];
 
+        // Consume SSE events. One self-contained parser that handles both the
+        // per-chunk deltas and any trailing data line the server may have
+        // sent without a final newline.
+        const processSseLine = (rawLine) => {
+          const line = rawLine.trim();
+          if (!line.startsWith("data:")) return;
+          const data = line.slice(5).trim();
+          if (!data || data === "[DONE]") return;
+          let chunk;
+          try { chunk = JSON.parse(data); } catch { return; }
+          if (chunk.error) throw new Error(chunk.error.message || "Streaming error");
+          if (chunk.model) modelSnapshot = chunk.model;
+          if (chunk.id) id = chunk.id;
+          if (chunk.usage) usage = chunk.usage;
+          const choice = chunk.choices?.[0];
+          if (!choice) return;
+          if (choice.finish_reason) finishReason = choice.finish_reason;
+          const delta = choice.delta?.content;
+          if (delta) {
+            replyText += delta;
+            if (onDelta) onDelta(delta);
+          }
+          const lpDelta = choice.logprobs?.content;
+          if (Array.isArray(lpDelta)) logprobsContent.push(...lpDelta);
+        };
+
         streamLoop: while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -1499,28 +1525,15 @@ Preset use cases (temperature × top-p):
           const lines = buffer.split("\n");
           buffer = lines.pop() || "";
           for (const rawLine of lines) {
-            const line = rawLine.trim();
-            if (!line.startsWith("data:")) continue;
-            const data = line.slice(5).trim();
-            if (data === "[DONE]") break streamLoop;
-            let chunk;
-            try { chunk = JSON.parse(data); } catch { continue; }
-            if (chunk.error) throw new Error(chunk.error.message || "Streaming error");
-            if (chunk.model) modelSnapshot = chunk.model;
-            if (chunk.id) id = chunk.id;
-            if (chunk.usage) usage = chunk.usage;
-            const choice = chunk.choices?.[0];
-            if (!choice) continue;
-            if (choice.finish_reason) finishReason = choice.finish_reason;
-            const delta = choice.delta?.content;
-            if (delta) {
-              replyText += delta;
-              if (onDelta) onDelta(delta);
-            }
-            const lpDelta = choice.logprobs?.content;
-            if (Array.isArray(lpDelta)) logprobsContent.push(...lpDelta);
+            if (rawLine.trim() === "data: [DONE]") break streamLoop;
+            processSseLine(rawLine);
           }
         }
+        // Flush the decoder and any trailing line the server didn't
+        // terminate with a newline — otherwise we'd silently drop the last
+        // data event when the stream ends without a final \n.
+        buffer += decoder.decode();
+        if (buffer.trim()) processSseLine(buffer);
 
         return {
           reply: replyText,
