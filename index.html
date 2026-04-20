@@ -6,7 +6,7 @@
     <title>Your personal LLM assistant</title>
     <meta
       name="description"
-      content="A static OpenAI chatbot on GitHub Pages. Shape it into anything by editing the system prompt."
+      content="A minimal LLM chatbot as a single HTML file on GitHub Pages. Fork it and shape it into anything by editing the system prompt."
     />
     <style>
       :root {
@@ -120,7 +120,7 @@
         color: var(--error-fg);
         font-size: .9rem;
       }
-      /* Small per-message meta line below assistant replies. */
+      /* Small per-message meta line below bubbles. */
       .msg-meta {
         align-self: flex-start;
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -129,6 +129,7 @@
         padding: 0 .2rem;
         margin: -.15rem 0 .3rem;
       }
+      .msg-meta.user { align-self: flex-end; text-align: right; }
       .msg-meta .cost { color: var(--accent); }
       /* Small inline note under sampling sliders when the current model
          locks them to defaults (e.g. gpt-5 reasoning-tuned variants). */
@@ -250,7 +251,7 @@
         top: 0;
         left: 0;
         height: 100vh;
-        width: min(380px, 92vw);
+        width: min(420px, 92vw);
         background: var(--surface);
         border-right: 1px solid var(--border);
         color: var(--fg);
@@ -261,6 +262,24 @@
         flex-direction: column;
       }
       body[data-menu="open"] aside.drawer { transform: translateX(0); }
+
+      /* Desktop: drawer behaves as a persistent sidebar. No backdrop, and
+         the chat + topbar shift right to make room. User can still close the
+         drawer via the hamburger or × button, in which case content reclaims
+         the full width. */
+      @media (min-width: 900px) {
+        body[data-menu="open"] .backdrop {
+          opacity: 0;
+          pointer-events: none;
+        }
+        .topbar, .app {
+          transition: margin-left 200ms ease;
+        }
+        body[data-menu="open"] .topbar,
+        body[data-menu="open"] .app {
+          margin-left: min(420px, 92vw);
+        }
+      }
 
       .drawer-header {
         display: flex;
@@ -469,7 +488,7 @@
 
         <div class="field">
           <div class="field-header">
-            <label for="model">Model<button type="button" class="help-tip" data-help="Newest first. Mini and turbo variants only — fast and free-tier friendly. If your key rejects the newest model, step down a generation." aria-label="About model choice">?</button></label>
+            <label for="model">Model<button type="button" class="help-tip" data-help="Newest first. Small, fast variants only (nano / mini / turbo) — free-tier friendly. If your key rejects a newer model, step down a generation." aria-label="About model choice">?</button></label>
           </div>
           <select id="model">
             <option value="gpt-5-nano">gpt-5-nano · 2026 · $0.05 in / $0.40 out · locked sampling</option>
@@ -520,7 +539,7 @@
 
         <div class="field">
           <div class="field-header">
-            <label for="maxtok">Max tokens<button type="button" class="help-tip" data-help="Hard cap on reply length. Roughly 1 token is 0.75 words. Higher = longer replies, but more cost per message." aria-label="About max tokens">?</button></label>
+            <label for="maxtok">Max tokens<button type="button" class="help-tip" data-help="Hard cap on reply length. Roughly 1 token ≈ 0.75 words. Higher values allow longer replies but cost more per message." aria-label="About max tokens">?</button></label>
             <span class="value" id="maxtok-value">1024</span>
           </div>
           <input type="range" id="maxtok" min="64" max="4096" step="64" value="1024" />
@@ -552,7 +571,6 @@
         <div class="hero" id="placeholder">
           <h1 class="hero-title">Personal Assistant</h1>
           <p class="hero-tagline">A chatbot you can shape into anything.</p>
-          <p class="hero-cta">First time? <a id="open-settings-link">Open settings</a> to paste your OpenAI key.</p>
         </div>
       </main>
 
@@ -664,7 +682,6 @@
       const backdrop = document.getElementById("backdrop");
       const menuToggle = document.getElementById("menu-toggle");
       const drawerClose = document.getElementById("drawer-close");
-      const openSettingsLink = document.getElementById("open-settings-link");
 
       const keyInput = document.getElementById("key");
       const modelSelect = document.getElementById("model");
@@ -695,6 +712,10 @@
       let tokensIn = 0;
       let tokensOut = 0;
       let costTotal = 0;
+      // Used to back-compute the token cost of each new user message from the
+      // delta in usage.prompt_tokens between successive API responses.
+      let prevPromptTokens = 0;
+      let prevCompletionTokens = 0;
 
       // Hydrate controls from sessionStorage.
       keyInput.value = sessionStorage.getItem(KEYS.apiKey) || "";
@@ -769,14 +790,6 @@
       menuToggle.addEventListener("click", () => setMenu(document.body.dataset.menu !== "open"));
       drawerClose.addEventListener("click", () => setMenu(false));
       backdrop.addEventListener("click", () => setMenu(false));
-      // Event-delegate the open-settings link so it survives hero re-renders.
-      chatEl.addEventListener("click", (event) => {
-        const target = event.target;
-        if (target instanceof HTMLElement && target.id === "open-settings-link") {
-          event.preventDefault();
-          setMenu(true);
-        }
-      });
 
       // Help tooltips: hover on desktop; tap to toggle on touch devices.
       // Clicking anywhere else closes any open tooltip.
@@ -796,8 +809,11 @@
         if (e.key === "Escape" && document.body.dataset.menu === "open") setMenu(false);
       });
 
-      // Open drawer on first visit when no key is set.
-      if (!keyInput.value) setMenu(true); else setMenu(false);
+      // On desktop the drawer is a persistent sidebar, so default to open.
+      // On narrower screens it's a modal overlay, so default closed unless
+      // the user hasn't set an API key yet (in which case guide them to it).
+      const isWide = window.matchMedia("(min-width: 900px)").matches;
+      setMenu(isWide || !keyInput.value);
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -811,7 +827,8 @@
 
         const placeholderEl = document.getElementById("placeholder");
         if (placeholderEl) placeholderEl.remove();
-        addMessage("user", text);
+        const userBubble = addMessage("user", text);
+        const isFirstTurn = prevPromptTokens === 0;
         history.push({
           role: "user",
           content: text,
@@ -824,20 +841,28 @@
 
         try {
           const model = modelSelect.value;
-          const { reply, usage } = await callOpenAI({
-            apiKey: keyInput.value,
-            model,
-            systemPrompt: systemInput.value,
-            messages: history,
-            temperature: parseFloat(tempInput.value),
-            top_p: parseFloat(toppInput.value),
-            max_tokens: parseInt(maxtokInput.value, 10),
-          });
+          const requestedAt = Date.now();
+          const { reply, usage, finish_reason, model_snapshot, id } =
+            await callOpenAI({
+              apiKey: keyInput.value,
+              model,
+              systemPrompt: systemInput.value,
+              messages: history,
+              temperature: parseFloat(tempInput.value),
+              top_p: parseFloat(toppInput.value),
+              max_tokens: parseInt(maxtokInput.value, 10),
+            });
+          const latencyMs = Date.now() - requestedAt;
           loading.bubble.textContent = reply;
           history.push({
             role: "assistant",
             content: reply,
             timestamp: new Date().toISOString(),
+            model_snapshot,
+            finish_reason,
+            usage,
+            latency_ms: latencyMs,
+            response_id: id,
           });
           if (usage) {
             const inTok = usage.prompt_tokens || 0;
@@ -848,7 +873,20 @@
             tokensOut += Math.max(0, outTok);
             const cost = estimateCost(usage, model);
             costTotal += cost;
+
+            // Back-compute this user turn's tokens from the prompt_tokens delta.
+            // First turn: the whole prompt_tokens is system + user, so we flag
+            // it as including the system prompt. Later turns: delta minus the
+            // prior assistant reply isolates this single user message.
+            const userTurnTokens = isFirstTurn
+              ? inTok
+              : Math.max(0, inTok - prevPromptTokens - prevCompletionTokens);
+            appendUserMeta(userBubble.wrap, userTurnTokens, isFirstTurn);
+
             appendMeta(loading.wrap, inTok, outTok, reasoningTok, cost);
+
+            prevPromptTokens = inTok;
+            prevCompletionTokens = Math.max(0, outTok);
           }
         } catch (err) {
           loading.wrap.remove();
@@ -894,6 +932,8 @@
         tokensIn = 0;
         tokensOut = 0;
         costTotal = 0;
+        prevPromptTokens = 0;
+        prevCompletionTokens = 0;
         renderHero();
         refreshToolbar();
       });
@@ -903,7 +943,6 @@
           <div class="hero" id="placeholder">
             <h1 class="hero-title">Personal Assistant</h1>
             <p class="hero-tagline">A chatbot you can shape into anything.</p>
-            <p class="hero-cta">First time? <a id="open-settings-link">Open settings</a> to paste your OpenAI key.</p>
           </div>
         `;
       }
@@ -924,6 +963,8 @@
         tokensIn = 0;
         tokensOut = 0;
         costTotal = 0;
+        prevPromptTokens = 0;
+        prevCompletionTokens = 0;
         renderHero();
         refreshToolbar();
         setMenu(true);
@@ -967,6 +1008,9 @@
         return {
           reply: body.choices?.[0]?.message?.content ?? "",
           usage: body.usage,
+          finish_reason: body.choices?.[0]?.finish_reason ?? null,
+          model_snapshot: body.model ?? null,
+          id: body.id ?? null,
         };
       }
 
@@ -980,6 +1024,18 @@
         chatEl.appendChild(wrap);
         bubble.scrollIntoView({ behavior: "smooth", block: "end" });
         return { wrap, bubble };
+      }
+
+      function appendUserMeta(wrap, tokens, isFirstTurn) {
+        const meta = document.createElement("div");
+        meta.className = "msg-meta user";
+        meta.title = isFirstTurn
+          ? "Tokens for this turn. Includes the system prompt, which is always prepended to the first message."
+          : "Tokens this message added to the context.";
+        meta.textContent = isFirstTurn
+          ? `${tokens.toLocaleString()} tokens (incl. system prompt)`
+          : `${tokens.toLocaleString()} tokens`;
+        wrap.appendChild(meta);
       }
 
       function appendMeta(wrap, inTok, outTok, reasoningTok, cost) {
