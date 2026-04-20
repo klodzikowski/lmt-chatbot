@@ -688,8 +688,13 @@
         opacity: 1;
         pointer-events: auto;
       }
-      /* Section-level tooltips carry more context, so they get more room. */
-      .help-tip.wide::after { max-width: 320px; }
+      /* Section-level tooltips carry more context, so they get more room
+         and a pre-wrap whitespace rule so manual line breaks in data-help
+         render as paragraph/bullet breaks. */
+      .help-tip.wide::after {
+        max-width: 400px;
+        white-space: pre-wrap;
+      }
 
       .section-heading {
         font-size: .74rem;
@@ -771,7 +776,14 @@
 
         <div class="section-heading">
           Sampling
-          <button type="button" class="help-tip wide" data-help="Temperature and top-p both control how random the reply is, but in different ways. Temperature rescales the whole probability distribution — low values make the top tokens dominate (deterministic, repetitive), high values flatten the distribution (more creative, more chaotic). Top-p truncates the distribution — it only samples from the smallest set of tokens whose cumulative probability ≥ p. OpenAI recommends changing one at a time: combining them tends to be redundant or contradictory, and you can't tell which knob caused a change in behaviour." aria-label="About sampling">?</button>
+          <button type="button" class="help-tip wide" data-help="Temperature and top-p both control how random the reply is, but in different ways. Best practice: change one at a time so you can tell which knob caused a shift.
+
+Preset use cases (temperature × top-p):
+• Email / deterministic — predictable, focused replies
+• Translation — faithful, with linguistic variety
+• Creative writing — novel but coherent
+• Brainstorming — wild, diverse ideas
+• Chaos — both extremes, watch it break" aria-label="About sampling">?</button>
         </div>
 
         <select id="sampling-preset" class="preset-select" aria-label="Sampling presets">
@@ -1314,6 +1326,12 @@
             prevPromptTokens = inTok;
             prevCompletionTokens = Math.max(0, outTok);
           }
+          // Once the full reply has rendered (markdown or token chips, plus
+          // meta and Copy/Regenerate chips) force a scroll to the bottom so
+          // the Regenerate button is always visible without the user hunting
+          // for it. Override the mid-stream "only if user was at bottom"
+          // behaviour for this final pass.
+          chatEl.scrollTop = chatEl.scrollHeight;
         } catch (err) {
           loading.wrap.remove();
           addMessage("error", err.message || String(err));
