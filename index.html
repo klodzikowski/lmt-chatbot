@@ -789,21 +789,23 @@
           Sampling
           <button type="button" class="help-tip wide" data-help="Temperature and top-p both control how random the reply is, but in different ways. Best practice: change one at a time so you can tell which knob caused a shift.
 
-Preset use cases (temperature × top-p):
-• Email / deterministic — predictable, focused replies
-• Translation — faithful, with linguistic variety
-• Creative writing — novel but coherent
-• Brainstorming — wild, diverse ideas
-• Chaos — both extremes, watch it break" aria-label="About sampling">?</button>
+Preset use cases (temperature · top-p):
+• 0.0 · 1.0 — Reproducible: same reply for every student (uses a fixed seed)
+• 0.2 · 0.2 — Email / deterministic: predictable, focused
+• 0.2 · 1.0 — Translation: faithful, varied vocabulary
+• 1.3 · 0.5 — Creative writing: novel but coherent
+• 1.3 · 1.0 — Brainstorming: wild, diverse
+• 2.0 · 0.3 — Chaos: both extremes, watch it break" aria-label="About sampling">?</button>
         </div>
 
         <select id="sampling-preset" class="preset-select" aria-label="Sampling presets">
           <option value="">Preset use case…</option>
-          <option value="deterministic">Email / deterministic · low temp · low top-p</option>
-          <option value="translation">Translation · low temp · high top-p</option>
-          <option value="creative">Creative writing · high temp · low top-p</option>
-          <option value="brainstorming">Brainstorming · high temp · high top-p</option>
-          <option value="chaos">Chaos · max temp · low top-p — watch it break</option>
+          <option value="reproducible">temp 0.0 · top-p 1.0 · Reproducible — same output every student</option>
+          <option value="deterministic">temp 0.2 · top-p 0.2 · Email — predictable, focused</option>
+          <option value="translation">temp 0.2 · top-p 1.0 · Translation — faithful, varied vocab</option>
+          <option value="creative">temp 1.3 · top-p 0.5 · Creative writing — novel but coherent</option>
+          <option value="brainstorming">temp 1.3 · top-p 1.0 · Brainstorming — wild, diverse</option>
+          <option value="chaos">temp 2.0 · top-p 0.3 · Chaos — watch it break</option>
         </select>
 
         <div class="field sampling">
@@ -957,11 +959,14 @@ Preset use cases (temperature × top-p):
       };
       // gpt-5 reasoning-tuned variants only accept the default sampling params.
       const SAMPLING_LOCKED = (model) => /^gpt-5(\b|[-.])/i.test(model);
-      // Sampling presets lifted from Alammar & Grootendorst (2024). 'Chaos' is
-      // extra, for classroom fun — max temperature with a narrow top-p usually
-      // produces total gibberish which lands the 'don't push both extremes'
-      // lesson in one visible reply.
+      // Sampling presets. The middle four are from Alammar & Grootendorst
+      // (2024). 'Reproducible' (temp 0, top-p 1) pairs with a fixed seed in
+      // callOpenAI to produce the same reply across every student, useful
+      // for classroom alignment demos. 'Chaos' is the opposite — both knobs
+      // pushed to extremes, which reliably produces multilingual gibberish
+      // and lands the 'don't tune both to the wall' lesson in one reply.
       const SAMPLING_PRESETS = {
+        "reproducible":   { temperature: 0.0, top_p: 1.0 },
         "deterministic":  { temperature: 0.2, top_p: 0.2 },
         "translation":    { temperature: 0.2, top_p: 1.0 },
         "creative":       { temperature: 1.3, top_p: 0.5 },
@@ -1508,6 +1513,12 @@ Preset use cases (temperature × top-p):
             payload.logprobs = true;
             payload.top_logprobs = 5;
           }
+          // When the user picks the 'Reproducible' preset (temperature 0),
+          // pin OpenAI's sampler to a fixed seed so every student who sends
+          // the same prompt gets byte-identical output. Best-effort per the
+          // API reference — and without this, temp 0 alone is still subject
+          // to backend variance.
+          if (temperature === 0) payload.seed = 42;
         }
         if (model.startsWith("gpt-3.5")) {
           payload.max_tokens = max_tokens;
