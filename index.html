@@ -844,6 +844,12 @@ Preset use cases (temperature · top-p):
           </div>
           <input type="range" id="maxtok" min="64" max="4096" step="64" value="1024" />
         </div>
+
+        <div class="field checkbox-field">
+          <input type="checkbox" id="remember-conversation" />
+          <label for="remember-conversation">Remember conversation between sessions</label>
+          <button type="button" class="help-tip" data-help="When on, the conversation persists in this browser via localStorage. Reload the page or close the tab and your messages come back. Off by default — same as a regular chat window. Cleared when you Clear chat or Reset all." aria-label="About persistent memory">?</button>
+        </div>
       </div>
       <div class="drawer-resize" id="drawer-resize" aria-label="Resize sidebar" role="separator" aria-orientation="vertical"></div>
       <div class="drawer-footer">
@@ -1016,6 +1022,9 @@ Preset use cases (temperature · top-p):
         max_tokens: "lmt-chatbot-max-tokens",
         show_logprobs: "lmt-chatbot-show-logprobs",
         drawer_width: "lmt-chatbot-drawer-width",
+        // localStorage keys (separate from sessionStorage settings):
+        remember_conversation: "lmt-chatbot-remember-conversation",
+        history: "lmt-chatbot-history",
       };
 
       const drawer = document.getElementById("drawer");
@@ -1036,6 +1045,7 @@ Preset use cases (temperature · top-p):
       const presetSelect = document.getElementById("preset");
       const samplingPresetSelect = document.getElementById("sampling-preset");
       const showLogprobsInput = document.getElementById("show-logprobs");
+      const rememberConversationInput = document.getElementById("remember-conversation");
       const resizeHandle = document.getElementById("drawer-resize");
 
       const chatEl = document.getElementById("chat");
@@ -1072,7 +1082,54 @@ Preset use cases (temperature · top-p):
       toppInput.value = sessionStorage.getItem(KEYS.top_p) ?? DEFAULTS.top_p;
       maxtokInput.value = sessionStorage.getItem(KEYS.max_tokens) ?? DEFAULTS.max_tokens;
       showLogprobsInput.checked = sessionStorage.getItem(KEYS.show_logprobs) === "1";
+      // Remember-conversation toggle and persisted history live in
+      // localStorage so they survive tab close, unlike everything else.
+      rememberConversationInput.checked = localStorage.getItem(KEYS.remember_conversation) === "1";
       renderSliderValues();
+
+      // Hydrate the conversation from localStorage if remember-conversation
+      // is on. Re-renders bubbles, restores totals, re-attaches WRAP refs so
+      // regenerate still works on hydrated turns.
+      function hydrateConversationFromStorage() {
+        if (!rememberConversationInput.checked) return;
+        let stored;
+        try { stored = JSON.parse(localStorage.getItem(KEYS.history) || "[]"); }
+        catch { return; }
+        if (!Array.isArray(stored) || !stored.length) return;
+
+        const placeholder = document.getElementById("placeholder");
+        if (placeholder) placeholder.remove();
+
+        for (const entry of stored) {
+          history.push(entry);
+          if (entry.role === "user") {
+            addMessage("user", entry.content);
+          } else if (entry.role === "assistant") {
+            const wrap = addMessage("assistant", "");
+            wrap.bubble.innerHTML = renderMarkdown(entry.content || "");
+            entry[WRAP] = wrap.wrap;
+            if (entry.usage) {
+              const inTok = entry.usage.prompt_tokens || 0;
+              const outTok = (entry.usage.total_tokens || 0) - inTok;
+              const reasoningTok = entry.usage.completion_tokens_details?.reasoning_tokens || 0;
+              const cachedTok = entry.usage.prompt_tokens_details?.cached_tokens || 0;
+              const cost = estimateCost(entry.usage, entry.model_snapshot || modelSelect.value);
+              tokensIn += inTok;
+              tokensOut += Math.max(0, outTok);
+              tokensCached += cachedTok;
+              costTotal += cost;
+              appendMeta(wrap.wrap, inTok, outTok, reasoningTok, cachedTok, cost);
+              appendActionChips(wrap.wrap, entry.content);
+              prevPromptTokens = inTok;
+              prevCompletionTokens = Math.max(0, outTok);
+            }
+          }
+        }
+        refreshToolbar();
+        // Defer the scroll a tick so the DOM has had a chance to lay out.
+        setTimeout(() => { chatEl.scrollTop = chatEl.scrollHeight; }, 0);
+      }
+      hydrateConversationFromStorage();
 
       // Persist on input.
       keyInput.addEventListener("input", () => setOrClear(KEYS.apiKey, keyInput.value));
@@ -1099,6 +1156,30 @@ Preset use cases (temperature · top-p):
         sessionStorage.setItem(KEYS.show_logprobs, showLogprobsInput.checked ? "1" : "0");
         applyLogprobsState();
       });
+
+      rememberConversationInput.addEventListener("change", () => {
+        if (rememberConversationInput.checked) {
+          localStorage.setItem(KEYS.remember_conversation, "1");
+          // Snapshot whatever history is currently in memory so it persists
+          // immediately, not just on the next turn.
+          saveHistoryToStorage();
+        } else {
+          localStorage.removeItem(KEYS.remember_conversation);
+          localStorage.removeItem(KEYS.history);
+        }
+      });
+
+      function saveHistoryToStorage() {
+        if (!rememberConversationInput.checked) return;
+        try {
+          // JSON.stringify already skips Symbol-keyed properties (the WRAP
+          // ref), so we can serialise history directly.
+          localStorage.setItem(KEYS.history, JSON.stringify(history));
+        } catch {
+          // If localStorage is full or unavailable, fail quietly — the
+          // in-memory chat keeps working.
+        }
+      }
 
       samplingPresetSelect.addEventListener("change", () => {
         const key = samplingPresetSelect.value;
@@ -1362,10 +1443,12 @@ Preset use cases (temperature · top-p):
           // for it. Override the mid-stream "only if user was at bottom"
           // behaviour for this final pass.
           chatEl.scrollTop = chatEl.scrollHeight;
+          saveHistoryToStorage();
         } catch (err) {
           loading.wrap.remove();
           addMessage("error", err.message || String(err));
           if (newUserMessage) history.pop();
+          saveHistoryToStorage();
         } finally {
           sendBtn.disabled = false;
           refreshToolbar();
@@ -1446,6 +1529,9 @@ Preset use cases (temperature · top-p):
         costTotal = 0;
         prevPromptTokens = 0;
         prevCompletionTokens = 0;
+        // Clear persisted history too. Toggle stays on — user keeps the
+        // intent to remember future conversations.
+        localStorage.removeItem(KEYS.history);
         renderHero();
         refreshToolbar();
       });
@@ -1462,6 +1548,10 @@ Preset use cases (temperature · top-p):
       resetAllBtn.addEventListener("click", () => {
         if (!confirm("Reset everything? This wipes the key, the system prompt, the sliders, and the conversation.")) return;
         Object.values(KEYS).forEach((k) => sessionStorage.removeItem(k));
+        // Reset all also wipes localStorage state — persistent memory
+        // toggle and saved history both go.
+        localStorage.removeItem(KEYS.remember_conversation);
+        localStorage.removeItem(KEYS.history);
         keyInput.value = "";
         systemInput.value = DEFAULT_SYSTEM;
         modelSelect.value = DEFAULTS.model;
@@ -1474,6 +1564,7 @@ Preset use cases (temperature · top-p):
         syncSamplingPresetIndicator();
         showLogprobsInput.checked = false;
         applyLogprobsState();
+        rememberConversationInput.checked = false;
         history.length = 0;
         tokensIn = 0;
         tokensOut = 0;
